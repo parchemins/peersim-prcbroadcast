@@ -1,6 +1,7 @@
 package descent.broadcast.causal.prcbroadcast;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import descent.broadcast.reliable.MReliableBroadcast;
 import peersim.core.Node;
@@ -20,4 +21,9 @@ public interface IRoutingService {
 	public void sendRho(Node from, Node to);
 
 	public void sendBuffer(Node from, Node to, ArrayList<MReliableBroadcast> buffer);
+
+	public void sendToOutview(MReliableBroadcast m);
+
+	public HashSet<Node> getOutview();
+
 }

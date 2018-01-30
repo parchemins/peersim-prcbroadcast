@@ -1,29 +1,17 @@
 package descent.broadcast.causal.prcbroadcast;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Iterator;
 
-import org.apache.commons.collections4.IteratorUtils;
-
-import descent.bidirectionnal.MClose;
-import descent.bidirectionnal.MOpen;
-import descent.broadcast.causal.pcbroadcast.MForward;
-import descent.broadcast.causal.pcbroadcast.MLockedBroadcast;
 import descent.broadcast.causal.pcbroadcast.MRegularBroadcast;
-import descent.broadcast.causal.pcbroadcast.MUnlockBroadcast;
 import descent.broadcast.reliable.MReliableBroadcast;
-import descent.rps.APeerSampling;
 import descent.rps.IMessage;
 import peersim.cdsim.CDProtocol;
 import peersim.config.Configuration;
-import peersim.config.FastConfig;
-import peersim.core.CommonState;
 import peersim.core.Node;
 import peersim.edsim.EDProtocol;
-import peersim.transport.Transport;
 
 /**
  * Preventive reliable causal broadcast. It sends control messages to remove the
@@ -219,8 +207,76 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		this.buffering(m);
 	}
 
+	/**
+	 * Reliable broadcast communication primitive.
+	 * 
+	 * @param message
+	 *            The message to broadcast.
+	 * @return {MReliableBroadcast} The message actually sent including its
+	 *         control information.
+	 */
 	public MReliableBroadcast rbroadcast(IMessage message) {
-		return null;
+		MReliableBroadcast m = new MReliableBroadcast(this.node.getID(), ++this.counter, message);
+		this.receive(m, null);
+		return m;
+	}
+
+	/**
+	 * The broadcast protocol just received a broadcast message.
+	 * 
+	 * @param m
+	 *            The message just received.
+	 * @param from
+	 *            From whom we just received the message.
+	 */
+	public void receive(MReliableBroadcast m, Node from) {
+		if (!received(m, from)) {
+			this.irs.sendToOutview(m);
+			this.rDeliver(m);
+		}
+	}
+
+	/**
+	 * Checks in the local structure if the message has already been received.
+	 * If not, it adds it to the local structure. If it has, it purges the
+	 * structure from this specific entry.
+	 * 
+	 * @param m
+	 *            The message to check.
+	 * @param from
+	 *            The node that just sent the message
+	 * @return True if the message was already received, false otherwise.
+	 */
+	private boolean received(MReliableBroadcast m, Node from) {
+		boolean hasReceived = false;
+		Iterator<Node> keys = this.expected.keySet().iterator();
+		// #1 check if the message has been received previously
+		while (!hasReceived && keys.hasNext()) {
+			Node n = keys.next();
+			if (this.expected.get(n).contains(m)) {
+				hasReceived = true;
+			}
+		}
+		// #2 if it has, we purge the specific entry
+		if (hasReceived) {
+			this.expected.get(from).remove(from);
+			if (this.expected.get(from).size() == 0) {
+				this.expected.remove(from);
+			}
+		} else {
+			// #3 if not, we expect to receive the message from all other
+			// neighbors
+			for (Node n : this.irs.getOutview()) {
+				if (!this.expected.containsKey(n)) {
+					this.expected.put(n, new HashSet<MReliableBroadcast>());
+				}
+				this.expected.get(n).add(m);
+			}
+			if (from != null) { // from is null when its the original sender
+				this.expected.get(from).remove(from);
+			}
+		}
+		return hasReceived;
 	}
 
 	/**
