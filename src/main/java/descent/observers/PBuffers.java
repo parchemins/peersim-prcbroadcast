@@ -1,6 +1,6 @@
 package descent.observers;
 
-import descent.broadcast.causal.preventive.PreventiveCausalBroadcast;
+import descent.broadcast.causal.pcbroadcast.PreventiveCausalBroadcast;
 import descent.observers.structure.DictGraph;
 import descent.observers.structure.DictGraph.StatsPair;
 import descent.observers.structure.IObserverProgram;

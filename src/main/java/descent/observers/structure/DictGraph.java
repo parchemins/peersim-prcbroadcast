@@ -15,7 +15,7 @@ import java.util.function.Function;
 import org.apache.commons.collections4.IteratorUtils;
 
 import descent.bidirectionnal.BiSpray;
-import descent.broadcast.causal.preventive.PreventiveCausalBroadcast;
+import descent.broadcast.causal.pcbroadcast.PreventiveCausalBroadcast;
 import descent.controllers.CDynamicNetwork;
 import descent.rps.APeerSampling;
 import descent.rps.IPeerSampling;

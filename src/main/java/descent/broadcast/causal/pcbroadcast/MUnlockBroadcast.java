@@ -1,4 +1,4 @@
-package descent.broadcast.causal.preventive;
+package descent.broadcast.causal.pcbroadcast;
 
 import descent.rps.IMessage;
 import peersim.core.Node;

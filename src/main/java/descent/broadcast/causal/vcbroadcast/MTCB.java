@@ -1,4 +1,4 @@
-package descent.broadcast.causal.reactive;
+package descent.broadcast.causal.vcbroadcast;
 
 import descent.rps.IMessage;
 

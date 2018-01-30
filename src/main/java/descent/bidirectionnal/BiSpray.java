@@ -8,7 +8,7 @@ import java.util.Map.Entry;
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.bag.HashBag;
 
-import descent.broadcast.causal.preventive.PreventiveCausalBroadcast;
+import descent.broadcast.causal.pcbroadcast.PreventiveCausalBroadcast;
 import descent.rps.IMessage;
 import descent.rps.IPeerSampling;
 import descent.spray.Spray;
