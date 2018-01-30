@@ -1,5 +1,6 @@
 package descent.broadcast.causal.prcbroadcast;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,15 +38,17 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	private final static String PAR_PID = "pid";
 	public static Integer pid;
 
+	IRoutingService irs; // (TODO) init correctly
+
 	// #2 reliability structure
 	private Integer counter = 0;
 	protected Node node;
 	public HashMap<Node, HashSet<MReliableBroadcast>> expected;
 
 	// #3 safety structures
-	public HashMap<Node, ArrayList<MReliableBroadcast>> buffersAlpha;
+	public HashMap<Node, HashSet<MReliableBroadcast>> buffersAlpha;
 	public HashMap<Node, ArrayList<MReliableBroadcast>> buffersBeta;
-	public HashMap<Node, ArrayList<MReliableBroadcast>> buffersPi;
+	public HashMap<Node, HashSet<MReliableBroadcast>> buffersPi;
 	public HashMap<Node, Boolean> receiptsOfPi;
 
 	/////////
@@ -54,16 +57,16 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		PreventiveReliableCausalBroadcast.pid = Configuration
 				.getPid(prefix + "." + PreventiveReliableCausalBroadcast.PAR_PID);
 
-		this.buffersAlpha = new HashMap<Node, ArrayList<MReliableBroadcast>>();
+		this.buffersAlpha = new HashMap<Node, HashSet<MReliableBroadcast>>();
 		this.buffersBeta = new HashMap<Node, ArrayList<MReliableBroadcast>>();
-		this.buffersPi = new HashMap<Node, ArrayList<MReliableBroadcast>>();
+		this.buffersPi = new HashMap<Node, HashSet<MReliableBroadcast>>();
 		this.receiptsOfPi = new HashMap<Node, Boolean>();
 	}
 
 	public PreventiveReliableCausalBroadcast() {
-		this.buffersAlpha = new HashMap<Node, ArrayList<MReliableBroadcast>>();
+		this.buffersAlpha = new HashMap<Node, HashSet<MReliableBroadcast>>();
 		this.buffersBeta = new HashMap<Node, ArrayList<MReliableBroadcast>>();
-		this.buffersPi = new HashMap<Node, ArrayList<MReliableBroadcast>>();
+		this.buffersPi = new HashMap<Node, HashSet<MReliableBroadcast>>();
 		this.receiptsOfPi = new HashMap<Node, Boolean>();
 	}
 
@@ -77,10 +80,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 *            The new neighbor.
 	 */
 	public void openO(Node n) {
-		// #0 (TODO) remove n from safe links
-		// #1 get the peer sampling service
-		IRoutingService irs = null; // (TODO) init correctly
-		// #2 send alpha
+		// (TODO) remove n from link to use. n is not safe.
 		irs.sendAlpha(this.node, n);
 	}
 
@@ -107,69 +107,102 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 *            to = this.node
 	 */
 	public void receiveAlpha(Node from, Node to) {
-		
+		this.buffersAlpha.put(from, new HashSet<MReliableBroadcast>());
+		this.receiptsOfPi.put(from, false);
+		this.irs.sendBeta(from, to);
 	}
 
 	/**
-	 * Just received a locked message. Must acknowledge it.
+	 * Just received the second control message of safety protocol.
 	 * 
 	 * @param from
-	 *            The node that sent the locked message.
+	 *            from = this.node
 	 * @param to
-	 *            The node that must acknowledge the locked message.
+	 *            The node we add in our out-view.
 	 */
-	private void receiveLocked(Node from, Node to) {
-		MUnlockBroadcast mu = new MUnlockBroadcast(from, to);
-		Transport t = ((Transport) this.node
-				.getProtocol(FastConfig.getTransport(PreventiveReliableCausalBroadcast.pid)));
-
-		APeerSampling ps = (APeerSampling) this.node
-				.getProtocol(FastConfig.getLinkable(PreventiveReliableCausalBroadcast.pid));
-		List<Node> neighborhood = IteratorUtils.toList(ps.getAliveNeighbors().iterator());
-
-		if (neighborhood.contains(from)) {
-			t.send(this.node, from, mu, PreventiveReliableCausalBroadcast.pid);
-		} else {
-			// just to check if it cannot send message because it has no
-			PreventiveReliableCausalBroadcast fcb = (PreventiveReliableCausalBroadcast) from
-					.getProtocol(PreventiveReliableCausalBroadcast.pid);
-			if (fcb.buffers.containsKey(to)) {
-				System.out.println("NOT COOL");
-			}
-		}
+	public void receiveBeta(Node from, Node to) {
+		this.buffersBeta.put(to, new ArrayList<MReliableBroadcast>());
+		this.irs.sendPi(from, to);
 	}
 
 	/**
-	 * Just received an acknowledged message. Must empty the corresponding
-	 * buffer etc.
+	 * Just received the third control message of safety protocol.
 	 * 
 	 * @param from
-	 *            We are the origin.
+	 *            The node that add this process in its out-view.
 	 * @param to
-	 *            The node that acknowledged our locked message.
+	 *            to = this.node
 	 */
-	private void receiveAck(Node from, Node to) {
-		if (this.buffers.containsKey(to)) {
-			Transport t = ((Transport) this.node
-					.getProtocol(FastConfig.getTransport(PreventiveReliableCausalBroadcast.pid)));
-			// #1 empty the buffer
-			for (int i = 0; i < this.buffers.get(to).size(); ++i) {
-				t.send(this.node, to, this.buffers.get(to).get(i), PreventiveReliableCausalBroadcast.pid);
-			}
-			// #2 remove the entry from the buffer
-			this.buffers.remove(to);
-		}
+	public void receivePi(Node from, Node to) {
+		this.buffersPi.put(from, new HashSet<MReliableBroadcast>());
+		this.receiptsOfPi.put(from, true);
+		this.irs.sendRho(from, to);
 	}
 
 	/**
-	 * A peer is removed from neighborhoods. Clean buffers if need be.
+	 * Just received the fourth and last control message of safety protocol.
 	 * 
-	 * @param n
-	 *            The removed neighbor.
-	 * 
+	 * @param from
+	 *            from = this.node
+	 * @param to
+	 *            The node that we add as neighbor.
 	 */
-	public void closed(Node n) {
-		this.buffers.remove(n);
+	public void receiveRho(Node from, Node to) {
+		this.irs.sendBuffer(from, to, this.buffersBeta.get(to));
+		this.buffersBeta.remove(to);
+		// (TODO) add the neighbor to safe links
+	}
+
+	/**
+	 * Just received the buffer of messages. Must ignore messages already
+	 * delivered; must deliver messages never delivered; must expect messages
+	 * already received but not by the sender.
+	 * 
+	 * @param from
+	 *            The process that added this process in its out-view
+	 * @param to
+	 *            to = this.node
+	 * @param buffer
+	 *            The buffer of messages that makes the link safe.
+	 */
+	public void receiveBuffer(Node from, Node to, ArrayList<MReliableBroadcast> buffer) {
+		// #1 filter useless messages of buffer
+		buffer.removeAll(this.buffersAlpha.get(from)); // potential messages
+		// #2 deliver messages that were not delivered (normal receive procedure
+		// including forward)
+		for (int i = 0; i < buffer.size(); ++i) {
+			if (!this.buffersPi.get(from).contains(buffer.get(i))) {
+				// (TODO) RECEIVE NOT CDELIVER
+				this.cDeliver((MRegularBroadcast) buffer.get(i).getPayload());
+			}
+		}
+		// #3 add expected messages to the link
+		HashSet<MReliableBroadcast> toExpect = new HashSet<MReliableBroadcast>(buffersPi.get(from));
+		toExpect.removeAll(buffer);
+		this.expected.put(from, toExpect);
+		// (TODO) adds the neighbor in our in-view
+	}
+
+	/**
+	 * Clean the structure when a link is closed in our out-view.
+	 * 
+	 * @param neighbor
+	 *            The process removed from our neighborhood.
+	 */
+	public void closeO(Node neighbor) {
+		this.buffersBeta.remove(neighbor);
+	}
+
+	/**
+	 * Clean the structure when a link is closed in our in-view.
+	 * 
+	 * @param neighbor
+	 *            The process removed from our neighborhood.
+	 */
+	public void closeI(Node neighbor) {
+		this.buffersAlpha.remove(neighbor);
+		this.buffersPi.remove(neighbor);
+		this.receiptsOfPi.remove(neighbor);
 	}
 
 	// DISSEMINATION:
@@ -182,12 +215,12 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 *            The message to broadcast.
 	 */
 	public void cbroadcast(IMessage message) {
-		++this.counter;
-		MReliableBroadcast mrb = new MReliableBroadcast(this.node.getID(), this.counter,
-				new MRegularBroadcast(message));
-		this.received.add(mrb.id, mrb.counter);
-		this._sendToAllNeighbors(mrb);
-		this.rDeliver(mrb);
+		MReliableBroadcast m = this.rbroadcast(message);
+		this.buffering(m);
+	}
+
+	public MReliableBroadcast rbroadcast(IMessage message) {
+		return null;
 	}
 
 	/**
@@ -198,11 +231,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 *            The message delivered.
 	 */
 	public void rDeliver(MReliableBroadcast m) {
-		// #1 buffers
-		for (Node neigbhor : this.buffers.keySet()) {
-			this.buffers.get(neigbhor).add(m);
-		}
-		// #2 deliver
+		this.buffering(m);
 		this.cDeliver((MRegularBroadcast) m.getPayload());
 	}
 
@@ -216,92 +245,31 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		// nothing
 	}
 
+	/**
+	 * 
+	 * @param m
+	 */
+	private void buffering(MReliableBroadcast m) {
+		for (Node n : this.buffersBeta.keySet()) {
+			this.buffersBeta.get(n).add(m);
+		}
+		for (Node n : this.receiptsOfPi.keySet()) {
+			if (this.receiptsOfPi.get(n)) {
+				this.buffersPi.get(n).add(m);
+			} else {
+				this.buffersAlpha.get(n).add(m);
+			}
+		}
+	}
+
+	// PEERSIM-RELATED:
+
 	public void processEvent(Node node, int protocolId, Object message) {
 		this._setNode(node);
-
-		if (message instanceof MRegularBroadcast) {
-			MReliableBroadcast mrb = (MReliableBroadcast) message;
-			if (!this.received.contains(mrb.id, mrb.counter)) {
-				this.received.add(mrb.id, mrb.counter);
-				this._sendToAllNeighbors(mrb); // forward
-				this.rDeliver(mrb);
-			}
-		} else if (message instanceof MOpen) {
-			MOpen mo = (MOpen) message;
-			this.opened(mo.to, mo.mediator);
-		} else if (message instanceof MClose) {
-			MClose mc = (MClose) message;
-			this.closed(mc.to);
-		} else if (message instanceof MForward) {
-			MForward mf = (MForward) message;
-			this.onForward(mf.to, mf.getPayload());
-		} else if (message instanceof MLockedBroadcast) {
-			MLockedBroadcast mlb = (MLockedBroadcast) message;
-			this.receiveLocked(mlb.from, mlb.to);
-		} else if (message instanceof MUnlockBroadcast) {
-			MUnlockBroadcast mu = (MUnlockBroadcast) message;
-			this.receiveAck(mu.from, mu.to);
-		}
 	}
 
 	public void nextCycle(Node node, int protocolId) {
 		this._setNode(node);
-
-		if (CommonState.r.nextDouble() < PreventiveReliableCausalBroadcast.pmessage) {
-			// (TODO)
-		}
-	}
-
-	/**
-	 * Send a locked message to a remote peer that we want to add in our
-	 * neighborhood.
-	 * 
-	 * @param to
-	 *            The peer to reach.
-	 */
-	private void _sendLocked(Node to, Node mediator) {
-		MLockedBroadcast mlb = new MLockedBroadcast(this.node, to);
-
-		Transport t = ((Transport) this.node
-				.getProtocol(FastConfig.getTransport(PreventiveReliableCausalBroadcast.pid)));
-		t.send(this.node, mediator, new MForward(to, mlb), PreventiveReliableCausalBroadcast.pid);
-	}
-
-	/**
-	 * Forward a message to a remote peer.
-	 * 
-	 * @param to
-	 *            The peer to forward the message to.
-	 * @param message
-	 *            The message to forward.
-	 */
-	private void onForward(Node to, IMessage message) {
-		((Transport) this.node.getProtocol(FastConfig.getTransport(PreventiveReliableCausalBroadcast.pid)))
-				.send(this.node, to, message, PreventiveReliableCausalBroadcast.pid);
-	}
-
-	/**
-	 * Send the reliable broadcast message to all neighbors, excepts ones still
-	 * buffering phase.
-	 * 
-	 * @param m
-	 *            The message to send.
-	 */
-	protected void _sendToAllNeighbors(MReliableBroadcast m) {
-		APeerSampling ps = (APeerSampling) this.node
-				.getProtocol(FastConfig.getLinkable(PreventiveReliableCausalBroadcast.pid));
-
-		for (Node q : ps.getAliveNeighbors()) {
-			// (XXX) maybe remove q from peer-sampling, cause it may be
-			// scrambled too quick.
-			// Or maybe put
-			// EDProtocol even for cycles. So all scrambles do not happen at a
-			// same time.
-			if (!this.buffers.containsKey(q)) {
-				((Transport) this.node.getProtocol(FastConfig.getTransport(PreventiveReliableCausalBroadcast.pid)))
-						.send(this.node, q, m, PreventiveReliableCausalBroadcast.pid);
-			}
-		}
 	}
 
 	/**
