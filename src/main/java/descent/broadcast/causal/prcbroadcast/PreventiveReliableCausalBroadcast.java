@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 import descent.broadcast.causal.pcbroadcast.MRegularBroadcast;
+import descent.broadcast.causal.prcbroadcast.routing.IRoutingService;
 import descent.broadcast.reliable.MReliableBroadcast;
 import descent.rps.IMessage;
 import peersim.cdsim.CDProtocol;

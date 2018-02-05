@@ -1,4 +1,4 @@
-package descent.broadcast.causal.prcbroadcast;
+package descent.broadcast.causal.prcbroadcast.routing;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -26,4 +26,7 @@ public interface IRoutingService {
 
 	public HashSet<Node> getOutview();
 
+	public void setNeighborSafe(Node n);
+
+	public void setNeighborUnsafe(Node n);
 }
