@@ -7,7 +7,7 @@ import peersim.core.Node;
  * that must reach Process B. On receipt, Process B stops the first buffer and
  * starts another one.
  */
-public class MPi {
+public class MPi implements IMControlMessage {
 
 	public final Node from;
 	public final Node to;
@@ -15,5 +15,21 @@ public class MPi {
 	public MPi(Node from, Node to) {
 		this.from = from;
 		this.to = to;
+	}
+
+	public Node getFrom() {
+		return this.from;
+	}
+
+	public Node getTo() {
+		return this.to;
+	}
+
+	public Node getSender() {
+		return this.from;
+	}
+
+	public Node getReceiver() {
+		return this.to;
 	}
 }

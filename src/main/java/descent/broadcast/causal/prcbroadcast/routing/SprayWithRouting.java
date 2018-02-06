@@ -6,7 +6,11 @@ import java.util.List;
 
 import org.apache.commons.collections4.bag.HashBag;
 
+import descent.broadcast.causal.prcbroadcast.MAlpha;
+import descent.broadcast.causal.prcbroadcast.MBeta;
 import descent.broadcast.causal.prcbroadcast.MBuffer;
+import descent.broadcast.causal.prcbroadcast.MPi;
+import descent.broadcast.causal.prcbroadcast.MRho;
 import descent.broadcast.causal.prcbroadcast.PreventiveReliableCausalBroadcast;
 import descent.broadcast.reliable.MReliableBroadcast;
 import descent.rps.APeerSampling;
@@ -33,6 +37,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public HashBag<Node> inview;
 
 	public HashSet<Node> unsafe;
+	public HashSet<Node> inUse;
 
 	public SprayWithRouting(PreventiveReliableCausalBroadcast parent) {
 		this.parent = parent;
@@ -120,43 +125,62 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// (TODO)
 	}
 
+	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
+		// #1 mark nodes as currently used
+		this.inUse.add(from);
+		this.inUse.add(to);
+		// #2 send the message
+		this._sendControlMessage(from, new MConnectTo(from, to, this.node), "connect to");
+	}
+
 	public void receiveMConnectTo(Node from, Node to, Node mediator) {
-		// (TODO)
+		// #1 add the route
+		this.routes.addRoute(to, mediator);
+		// #2 send an alpha message to start adding the new link
+		this.sendAlpha(from, to);
 	}
 
+	// from: process A; to: process B; A -> alpha -> B
 	public void sendAlpha(Node from, Node to) {
-		// TODO Auto-generated method stub
-
+		this._sendControlMessage(to, new MAlpha(from, to), "alpha");
 	}
 
+	// from: process A; to: process B; B -> beta -> A
 	public void sendBeta(Node from, Node to) {
-		// TODO Auto-generated method stub
-
+		this._sendControlMessage(from, new MBeta(from, to), "beta");
 	}
 
+	// from: process A; to: process B; A -> pi -> B
 	public void sendPi(Node from, Node to) {
-		// TODO Auto-generated method stub
-
+		this._sendControlMessage(to, new MPi(from, to), "pi");
 	}
 
+	// from: process A; to: process B; B -> rho -> A
 	public void sendRho(Node from, Node to) {
-		Node receiver = to;
-		if (this.node == to) {
-			receiver = from;
+		this._sendControlMessage(from, new MRho(from, to), "rho");
+	}
+
+	private void _sendControlMessage(Node target, Object m, String info) {
+		if (this.routes.hasRoute(target)) {
+			this._send(this.routes.getRoute(target), m);
+		} else if ((this.inview.contains(target) || this.outview.contains(target)) && !this.unsafe.contains(target)) {
+			this._send(target, m);
+		} else {
+			System.out.println("Cannot find route nor forward " + info);
 		}
 	}
 
 	public void sendBuffer(Node from, Node to, ArrayList<MReliableBroadcast> buffer) {
 		// #0 bidirectional, Process "to" also sends a buffer
 		Node receiver = this._getReceiver(from, to);
+		Node sender = this._getSender(from, to);
 		// #1 check if there is an issue with algo
 		if (!this.unsafe.contains(receiver)) {
 			System.out.println("Send buffer but seems safe already");
 			return;
 		}
 		// #2 send the buffer
-		MBuffer m = new MBuffer(from, to, buffer);
-		this._sendUnsafe(receiver, m);
+		this._sendUnsafe(receiver, new MBuffer(from, to, sender, receiver, buffer));
 	}
 
 	/**
@@ -196,6 +220,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			return from;
 		} else {
 			return to;
+		}
+	}
+
+	public Node _getSender(Node from, Node to) {
+		if (this.node == to) {
+			return to;
+		} else {
+			return from;
 		}
 	}
 

@@ -7,7 +7,7 @@ import peersim.core.Node;
  * that acknowledges the first receipt of alpha. On receipt, Process A starts
  * buffering.
  */
-public class MBeta {
+public class MBeta implements IMControlMessage {
 
 	public final Node from;
 	public final Node to;
@@ -15,5 +15,21 @@ public class MBeta {
 	public MBeta(Node from, Node to) {
 		this.from = from;
 		this.to = to;
+	}
+
+	public Node getFrom() {
+		return this.from;
+	}
+
+	public Node getTo() {
+		return this.to;
+	}
+
+	public Node getSender() {
+		return this.to;
+	}
+
+	public Node getReceiver() {
+		return this.from;
 	}
 }
