@@ -1,7 +1,6 @@
 package descent.broadcast.causal.prcbroadcast.routing;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -28,7 +27,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public PreventiveReliableCausalBroadcast parent; // (TODO) Interface CB + PS
 
-	public HashMap<FromTo, Node> paths;
+	public Routes routes;
 
 	public SprayPartialView outview;
 	public HashBag<Node> inview;
@@ -38,7 +37,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public SprayWithRouting(PreventiveReliableCausalBroadcast parent) {
 		this.parent = parent;
 
-		this.paths = new HashMap<FromTo, Node>();
+		this.routes = new Routes();
 
 		this.outview = new SprayPartialView();
 		this.inview = new HashBag<Node>();
@@ -73,11 +72,13 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void onSubscription(Node origin) {
 		this.inview.add(origin);
-		// TODO Auto-generated method stub
-
+		for (Node neighbor : this.outview.getPeers()) {
+			this._send(neighbor, new MConnectTo(neighbor, origin, this.node));
+		}
 	}
 
 	public void leave() {
+		// (TODO)
 		// #0 Goes down.
 		this.isUp = false;
 		// #1 Immediately remove in the in-views.
@@ -88,7 +89,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	/**
-	 * A neighbor in our in-view just left. Remove the occurences in our local
+	 * A neighbor in our in-view just left. Remove the occurrences in our local
 	 * structure.
 	 * 
 	 * @param leaver
@@ -98,7 +99,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.inview.remove(leaver);
 		this.parent.closeI(leaver);
 		this.unsafe.remove(leaver);
-		this._removeAllRoutes(leaver);
+		this._removeAllRoutes(leaver); // (TODO)
 	}
 
 	@Override
@@ -139,18 +140,15 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void sendRho(Node from, Node to) {
-		// TODO Auto-generated method stub
-
+		Node receiver = to;
+		if (this.node == to) {
+			receiver = from;
+		}
 	}
 
 	public void sendBuffer(Node from, Node to, ArrayList<MReliableBroadcast> buffer) {
 		// #0 bidirectional, Process "to" also sends a buffer
-		Node sender = from;
-		Node receiver = to;
-		if (this.node == to) {
-			sender = to;
-			receiver = from;
-		}
+		Node receiver = this._getReceiver(from, to);
 		// #1 check if there is an issue with algo
 		if (!this.unsafe.contains(receiver)) {
 			System.out.println("Send buffer but seems safe already");
@@ -158,23 +156,46 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 		// #2 send the buffer
 		MBuffer m = new MBuffer(from, to, buffer);
-		((Transport) this.node.getProtocol(FastConfig.getTransport(SprayWithRouting.pid))).send(sender, receiver, m,
-				SprayWithRouting.pid);
+		this._sendUnsafe(receiver, m);
 	}
 
 	/**
-	 * Send a message using safe channels
+	 * Send a message using safe channels and processed routes.
 	 * 
 	 * @param to
+	 *            The target ultimately.
 	 */
-	private void _send(Node to) {
+	private void _send(Node to, Object m) {
+		if ((this.outview.contains(to) || this.inview.contains(to) && !this.unsafe.contains(to))) {
+			((Transport) this.node.getProtocol(FastConfig.getTransport(SprayWithRouting.pid))).send(this.node, to, m,
+					SprayWithRouting.pid);
+		}
+	}
 
+	/**
+	 * Send a message using possibly unsafe channels and processed routes.
+	 * 
+	 * @param to
+	 *            The target ultimately.
+	 */
+	private void _sendUnsafe(Node to, Object m) {
+		if ((this.outview.contains(to) || this.inview.contains(to))) {
+			((Transport) this.node.getProtocol(FastConfig.getTransport(SprayWithRouting.pid))).send(this.node, to, m,
+					SprayWithRouting.pid);
+		}
 	}
 
 	public void sendToOutview(MReliableBroadcast m) {
 		for (Node n : this.getOutview()) {
-			((Transport) this.node.getProtocol(FastConfig.getTransport(SprayWithRouting.pid))).send(this.node, n, m,
-					SprayWithRouting.pid);
+			this._send(n, m);
+		}
+	}
+
+	public Node _getReceiver(Node from, Node to) {
+		if (this.node == to) {
+			return from;
+		} else {
+			return to;
 		}
 	}
 
@@ -227,7 +248,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 * do the job.
 	 */
 	private void _clear() {
-		this.paths = new HashMap<FromTo, Node>();
+		this.routes = new Routes();
 		this.outview = new SprayPartialView();
 		this.inview = new HashBag<Node>();
 		this.unsafe = new HashSet<Node>();
