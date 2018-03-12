@@ -1,11 +1,13 @@
 package descent.broadcast.causal.prcbroadcast;
 
 import descent.broadcast.causal.prcbroadcast.routing.MConnectTo;
+import descent.broadcast.causal.prcbroadcast.routing.MRemoveRoute;
 import descent.broadcast.causal.prcbroadcast.routing.SprayWithRouting;
 import peersim.cdsim.CDProtocol;
 import peersim.core.Node;
 import peersim.edsim.EDProtocol;
 
+// Whole protocol at once because peersim does not handle inheritance very well.
 public class WholePRCcast implements EDProtocol, CDProtocol {
 
 	public PreventiveReliableCausalBroadcast prcb;
@@ -27,7 +29,12 @@ public class WholePRCcast implements EDProtocol, CDProtocol {
 
 	public void processEvent(Node node, int protocolId, Object message) {
 		// Give the message to the proper sub-protocol
-		if (message instanceof IMControlMessage) {
+		if (message instanceof MConnectTo) {
+			// (TODO)
+		} else if (message instanceof MRemoveRoute) {
+			MRemoveRoute m = (MRemoveRoute) message;
+			this.swr.removeRoute(m.from, m.to);
+		} else if (message instanceof IMControlMessage) {
 			IMControlMessage imcm = (IMControlMessage) message;
 			if (imcm.getReceiver() == prcb.node) {
 				if (message instanceof MAlpha) {
@@ -50,8 +57,10 @@ public class WholePRCcast implements EDProtocol, CDProtocol {
 					swr.sendBeta(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MPi) {
 					swr.sendPi(imcm.getFrom(), imcm.getTo());
+					swr.removeRoute(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MRho) {
 					swr.sendRho(imcm.getFrom(), imcm.getTo());
+					swr.removeRoute(imcm.getFrom(), imcm.getTo());
 				}
 			}
 

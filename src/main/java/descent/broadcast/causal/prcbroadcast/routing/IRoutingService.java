@@ -29,4 +29,6 @@ public interface IRoutingService {
 	public void setNeighborSafe(Node n);
 
 	public void setNeighborUnsafe(Node n);
+	
+	public void removeRoute(Node from, Node to);
 }

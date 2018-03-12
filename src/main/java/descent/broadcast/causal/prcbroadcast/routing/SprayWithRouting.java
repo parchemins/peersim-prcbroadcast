@@ -1,7 +1,6 @@
 package descent.broadcast.causal.prcbroadcast.routing;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -19,6 +18,7 @@ import descent.rps.IMessage;
 import descent.rps.IPeerSampling;
 import descent.spray.SprayPartialView;
 import peersim.config.FastConfig;
+import peersim.core.CommonState;
 import peersim.core.Node;
 import peersim.transport.Transport;
 
@@ -54,8 +54,78 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	// PEER-SAMPLING:
 
 	public void periodicCall() {
-		// TODO Auto-generated method stub
+		// #1 select a neighbor to exchange with
+		Node q = this._getOldest();
+		if (q != null) {
+			// #2 prepare a sample
+			HashBag<Node> sample = this._getSample(q);
+			if (!sample.isEmpty()) {
+				this.outview.removeNeighbor(q);
+				this.inview.add(q);
+				this.sendMConnectTo(q, this.node, new MConnectTo(q, this.node, null));
+				// #A lock links for routing purpose
+				for (Node neighbor : sample) {
+					if (neighbor != this.node) {
+						this.inUse.add(neighbor);
+						this.inUse.add(q);
+						this.outview.removeNeighbor(neighbor);
+						this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
+					} else {
+						this.outview.removeNeighbor(q);
+						this.inview.add(q);
+						this.sendMConnectTo(q, this.node, new MConnectTo(q, this.node, null));
+					}
+				}
 
+			}
+		}
+	}
+
+	public Node _getOldest() {
+		Integer age = 0;
+		ArrayList<Node> possibleOldest = new ArrayList<Node>();
+		for (Node neighbor : this.outview.getPeers()) {
+			if (!this.inUse.contains(neighbor) && !this.unsafe.contains(neighbor)) {
+				if (age < this.outview.ages.get(neighbor)) {
+					age = this.outview.ages.get(neighbor);
+					possibleOldest = new ArrayList<Node>();
+				}
+				if (age == this.outview.ages.get(neighbor)) {
+					possibleOldest.add(neighbor);
+				}
+			}
+		}
+		if (possibleOldest.size() > 0) {
+			return possibleOldest.get(CommonState.r.nextInt(possibleOldest.size()));
+		}
+		return null;
+	}
+
+	public HashBag<Node> _getSample(Node q) {
+		// #1 filter
+		HashBag<Node> clone = new HashBag<Node>(this.outview.partialView);
+		if (q != null) {
+			clone.remove(q, 1);
+		}
+		for (Node neighbor : this.outview.partialView.uniqueSet()) {
+			if (this.inUse.contains(neighbor) || this.unsafe.contains(neighbor)) {
+				clone.remove(neighbor);
+			}
+		}
+		// #2 random and possibly replace
+		Integer sampleSize = (int) Math.ceil(clone.size());
+		HashBag<Node> sample = new HashBag<Node>();
+		while (sample.size() < sampleSize && clone.size() > 0) {
+			ArrayList<Node> ugly = new ArrayList<Node>(clone.uniqueSet());
+			Node neighbor = ugly.get(CommonState.r.nextInt(ugly.size()));
+			if (neighbor == q) {
+				sample.add(this.node);
+			} else {
+				sample.add(q);
+			}
+			clone.remove(neighbor, 1);
+		}
+		return sample;
 	}
 
 	public IMessage onPeriodicCall(Node origin, IMessage message) {
@@ -128,8 +198,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
 		// #1 mark nodes as currently used
-		this.inUse.add(from);
-		this.inUse.add(to);
+		if (to != this.node) {
+			this.inUse.add(from);
+			this.inUse.add(to);
+		}
 		// #2 send the message
 		this._sendControlMessage(from, new MConnectTo(from, to, this.node), "connect to");
 	}
@@ -164,7 +236,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	private void _sendControlMessage(Node target, Object m, String info) {
 		if (this.routes.hasRoute(target)) {
 			this._send(this.routes.getRoute(target), m); // route
-		} else if ((this.inview.contains(target) || this.outview.contains(target)) && !this.unsafe.contains(target)) {
+		} else if ((this.inview.contains(target) || this.outview.contains(target) || this.inUse.contains(target))
+				&& !this.unsafe.contains(target)) {
 			this._send(target, m); // forward
 			if (m instanceof MRho || m instanceof MPi) {
 				this.inUse.remove(target, 1);
@@ -194,7 +267,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _send(Node to, Object m) {
-		if ((this.outview.contains(to) || this.inview.contains(to) && !this.unsafe.contains(to))) {
+		if (((this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to))
+				&& !this.unsafe.contains(to))) {
 			((Transport) this.node.getProtocol(FastConfig.getTransport(SprayWithRouting.pid))).send(this.node, to, m,
 					SprayWithRouting.pid);
 		}
@@ -207,7 +281,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _sendUnsafe(Node to, Object m) {
-		if ((this.outview.contains(to) || this.inview.contains(to))) {
+		if ((this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to))) {
 			((Transport) this.node.getProtocol(FastConfig.getTransport(SprayWithRouting.pid))).send(this.node, to, m,
 					SprayWithRouting.pid);
 		}
@@ -245,6 +319,13 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		for (Node n : this.inview) {
 			if (!this.unsafe.contains(n))
 				result.add(n);
+		}
+		for (Node n : this.inUse) {
+			if (this.unsafe.contains(n)) {
+				System.out.println("inuse should not have unsafe links");
+			} else {
+				result.add(n);
+			}
 		}
 		return result;
 	}
@@ -288,6 +369,11 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.outview = new SprayPartialView();
 		this.inview = new HashBag<Node>();
 		this.unsafe = new HashSet<Node>();
+	}
+
+	public void removeRoute(Node from, Node to) {
+		this.inUse.remove(from, 1);
+		this.inUse.remove(to, 1);
 	}
 
 }
