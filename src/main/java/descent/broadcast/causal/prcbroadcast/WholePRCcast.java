@@ -11,16 +11,21 @@ public class WholePRCcast implements EDProtocol, CDProtocol {
 	public PreventiveReliableCausalBroadcast prcb;
 	public SprayWithRouting swr;
 
+	public WholePRCcast(String prefix) {
+		this.prcb = new PreventiveReliableCausalBroadcast(prefix);
+		this.swr = new SprayWithRouting(this.prcb);
+	}
+
 	public WholePRCcast() {
-		// TODO Auto-generated constructor stub
+		this.prcb = new PreventiveReliableCausalBroadcast();
+		this.swr = new SprayWithRouting(this.prcb);
 	}
 
-	public void nextCycle(Node arg0, int arg1) {
-		// TODO Auto-generated method stub
-
+	public void nextCycle(Node node, int protocolId) {
+		this.swr.periodicCall();
 	}
 
-	public void processEvent(Node node, int processId, Object message) {
+	public void processEvent(Node node, int protocolId, Object message) {
 		// Give the message to the proper sub-protocol
 		if (message instanceof IMControlMessage) {
 			IMControlMessage imcm = (IMControlMessage) message;
@@ -51,25 +56,11 @@ public class WholePRCcast implements EDProtocol, CDProtocol {
 			}
 
 		}
-
-		if (message instanceof MAlpha) {
-			MAlpha ma = (MAlpha) message;
-			if (ma.to == prcb.node) {
-				prcb.receiveAlpha(ma.from, ma.to);
-			} else {
-				swr.sendAlpha(ma.from, ma.to);
-			}
-		} else if (message instanceof MBeta) {
-			MBeta mb = (MBeta) message;
-			if (mb.from == prcb.node) {
-				prcb.receiveBeta(mb.from, mb.to);
-			}
-		}
 	}
 
 	@Override
 	public Object clone() {
-		// TODO Auto-generated method stub
+		// TODO maybe clone some configurations
 		return new WholePRCcast();
 	}
 

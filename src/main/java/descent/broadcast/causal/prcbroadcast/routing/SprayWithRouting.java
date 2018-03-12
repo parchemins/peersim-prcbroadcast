@@ -1,6 +1,7 @@
 package descent.broadcast.causal.prcbroadcast.routing;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -37,7 +38,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public HashBag<Node> inview;
 
 	public HashSet<Node> unsafe;
-	public HashSet<Node> inUse;
+	public HashBag<Node> inUse; // safe-> # control messages before removal
 
 	public SprayWithRouting(PreventiveReliableCausalBroadcast parent) {
 		this.parent = parent;
@@ -162,9 +163,12 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	private void _sendControlMessage(Node target, Object m, String info) {
 		if (this.routes.hasRoute(target)) {
-			this._send(this.routes.getRoute(target), m);
+			this._send(this.routes.getRoute(target), m); // route
 		} else if ((this.inview.contains(target) || this.outview.contains(target)) && !this.unsafe.contains(target)) {
-			this._send(target, m);
+			this._send(target, m); // forward
+			if (m instanceof MRho || m instanceof MPi) {
+				this.inUse.remove(target, 1);
+			}
 		} else {
 			System.out.println("Cannot find route nor forward " + info);
 		}
