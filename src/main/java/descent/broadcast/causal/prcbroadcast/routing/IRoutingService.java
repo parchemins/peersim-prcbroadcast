@@ -20,7 +20,7 @@ public interface IRoutingService {
 
 	public void sendRho(Node from, Node to);
 
-	public void sendBuffer(Node from, Node to, ArrayList<MReliableBroadcast> buffer);
+	public void sendBuffer(Node dest, Node from, Node to, ArrayList<MReliableBroadcast> buffer);
 
 	public void sendToOutview(MReliableBroadcast m);
 
@@ -29,6 +29,6 @@ public interface IRoutingService {
 	public void setNeighborSafe(Node n);
 
 	public void setNeighborUnsafe(Node n);
-	
+
 	public void removeRoute(Node from, Node to);
 }

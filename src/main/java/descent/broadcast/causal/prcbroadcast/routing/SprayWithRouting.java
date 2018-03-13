@@ -247,7 +247,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 	}
 
-	public void sendBuffer(Node from, Node to, ArrayList<MReliableBroadcast> buffer) {
+	public void sendBuffer(Node dest, Node from, Node to, ArrayList<MReliableBroadcast> buffer) {
 		// #0 bidirectional, Process "to" also sends a buffer
 		Node receiver = this._getReceiver(from, to);
 		Node sender = this._getSender(from, to);
