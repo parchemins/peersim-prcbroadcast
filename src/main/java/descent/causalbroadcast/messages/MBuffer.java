@@ -1,8 +1,7 @@
-package descent.broadcast.causal.prcbroadcast;
+package descent.causalbroadcast.messages;
 
 import java.util.ArrayList;
 
-import descent.broadcast.reliable.MReliableBroadcast;
 import peersim.core.Node;
 
 /**

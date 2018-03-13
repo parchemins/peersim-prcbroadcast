@@ -12,14 +12,9 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.function.Function;
 
-import org.apache.commons.collections4.IteratorUtils;
-
-import descent.bidirectionnal.BiSpray;
-import descent.broadcast.causal.pcbroadcast.PreventiveCausalBroadcast;
 import descent.controllers.CDynamicNetwork;
 import descent.rps.APeerSampling;
 import descent.rps.IPeerSampling;
-import peersim.config.FastConfig;
 import peersim.core.CommonState;
 import peersim.core.Node;
 
@@ -1328,7 +1323,7 @@ public class DictGraph {
 	 * return (sum / (double) times); }
 	 */
 
-	public Stats numberOfUnSafe() {
+/*	public Stats numberOfUnSafe() {
 		ArrayList<Double> nbUnSafes = new ArrayList<Double>();
 		for (Node n : CDynamicNetwork.networks.get(0)) {
 			PreventiveCausalBroadcast fcb = (PreventiveCausalBroadcast) n.getProtocol(PreventiveCausalBroadcast.pid);
@@ -1359,7 +1354,7 @@ public class DictGraph {
 	 * @param src
 	 * @return
 	 */
-	public Map<Node, Integer> dijkstraWithBuffersAndFlooding(Node src, boolean withFlooding) {
+/*	public Map<Node, Integer> dijkstraWithBuffersAndFlooding(Node src, boolean withFlooding) {
 		Map<Node, Integer> dist = new HashMap<Node, Integer>();
 		List<Node> Q = new LinkedList<Node>();
 
@@ -1393,7 +1388,7 @@ public class DictGraph {
 			 * System.out.println(Q.size()); System.out.println(minNode);
 			 * System.out.println(dist.get(minNode) + 1);
 			 */
-			Q.remove(minNode);
+/*			Q.remove(minNode);
 			BiSpray bs = (BiSpray) minNode.getProtocol(BiSpray.pid);
 			PreventiveCausalBroadcast fcb = (PreventiveCausalBroadcast) minNode.getProtocol(PreventiveCausalBroadcast.pid);
 
@@ -1409,7 +1404,7 @@ public class DictGraph {
 		}
 		return dist;
 	}
-
+*/
 	public class StatsPair {
 
 		public final Stats a;
@@ -1422,7 +1417,7 @@ public class DictGraph {
 
 	}
 
-	public StatsPair getStatsAboutDistances(Integer n) {
+/*	public StatsPair getStatsAboutDistances(Integer n) {
 
 		ArrayList<Double> distancesA = new ArrayList<Double>();
 		ArrayList<Double> distancesB = new ArrayList<Double>();
@@ -1447,6 +1442,6 @@ public class DictGraph {
 		}
 
 		return new StatsPair(Stats.getFromSmall(distancesA), Stats.getFromSmall(distancesB));
-	}
+	}*/
 
 }

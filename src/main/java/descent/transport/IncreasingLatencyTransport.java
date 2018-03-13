@@ -1,6 +1,5 @@
 package descent.transport;
 
-import descent.broadcast.causal.pcbroadcast.PreventiveCausalBroadcast;
 import peersim.config.Configuration;
 import peersim.core.CommonState;
 import peersim.core.Node;

@@ -1,4 +1,4 @@
-package descent.broadcast.causal.prcbroadcast.routing;
+package descent.causalbroadcast.routingbispray;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -6,13 +6,13 @@ import java.util.List;
 
 import org.apache.commons.collections4.bag.HashBag;
 
-import descent.broadcast.causal.prcbroadcast.MAlpha;
-import descent.broadcast.causal.prcbroadcast.MBeta;
-import descent.broadcast.causal.prcbroadcast.MBuffer;
-import descent.broadcast.causal.prcbroadcast.MPi;
-import descent.broadcast.causal.prcbroadcast.MRho;
-import descent.broadcast.causal.prcbroadcast.PreventiveReliableCausalBroadcast;
-import descent.broadcast.reliable.MReliableBroadcast;
+import descent.causalbroadcast.BiPreventiveReliableCausalBroadcast;
+import descent.causalbroadcast.messages.MAlpha;
+import descent.causalbroadcast.messages.MBeta;
+import descent.causalbroadcast.messages.MBuffer;
+import descent.causalbroadcast.messages.MPi;
+import descent.causalbroadcast.messages.MReliableBroadcast;
+import descent.causalbroadcast.messages.MRho;
 import descent.rps.APeerSampling;
 import descent.rps.IMessage;
 import descent.rps.IPeerSampling;
@@ -30,7 +30,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public static int pid; // (TODO) rework that
 
-	public PreventiveReliableCausalBroadcast parent; // (TODO) Interface CB + PS
+	public BiPreventiveReliableCausalBroadcast parent; // (TODO) Interface CB +
+														// PS
 
 	public Routes routes;
 
@@ -40,8 +41,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public HashSet<Node> unsafe;
 	public HashBag<Node> inUse; // safe-> # control messages before removal
 
-	public SprayWithRouting(PreventiveReliableCausalBroadcast parent) {
-		this.parent = parent;
+	public SprayWithRouting(BiPreventiveReliableCausalBroadcast prcb) {
+		this.parent = prcb;
 
 		this.routes = new Routes();
 

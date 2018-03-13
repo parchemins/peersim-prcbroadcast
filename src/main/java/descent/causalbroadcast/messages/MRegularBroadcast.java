@@ -1,4 +1,4 @@
-package descent.broadcast.causal.pcbroadcast;
+package descent.causalbroadcast.messages;
 
 import descent.rps.IMessage;
 

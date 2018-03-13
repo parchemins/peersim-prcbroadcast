@@ -1,13 +1,13 @@
-package descent.broadcast.causal.prcbroadcast;
+package descent.causalbroadcast;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 
-import descent.broadcast.causal.pcbroadcast.MRegularBroadcast;
-import descent.broadcast.causal.prcbroadcast.routing.IRoutingService;
-import descent.broadcast.reliable.MReliableBroadcast;
+import descent.causalbroadcast.messages.MRegularBroadcast;
+import descent.causalbroadcast.messages.MReliableBroadcast;
+import descent.causalbroadcast.routingbispray.IRoutingService;
 import descent.rps.IMessage;
 import peersim.cdsim.CDProtocol;
 import peersim.core.Node;

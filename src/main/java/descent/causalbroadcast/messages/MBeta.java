@@ -1,4 +1,4 @@
-package descent.broadcast.causal.prcbroadcast;
+package descent.causalbroadcast.messages;
 
 import peersim.core.Node;
 

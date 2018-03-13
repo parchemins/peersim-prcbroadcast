@@ -1,17 +1,18 @@
-package descent.broadcast.causal.prcbroadcast;
+package descent.causalbroadcast.messages;
 
 import peersim.core.Node;
 
 /**
- * When Process A adds a link to Process B, this is the first control message
- * that notifies Process B. On receipt, Process B starts buffering.
+ * When Process A adds a link to Process B, this is the third control message
+ * that must reach Process B. On receipt, Process B stops the first buffer and
+ * starts another one.
  */
-public class MAlpha implements IMControlMessage {
+public class MPi implements IMControlMessage {
 
 	public final Node from;
 	public final Node to;
 
-	public MAlpha(Node from, Node to) {
+	public MPi(Node from, Node to) {
 		this.from = from;
 		this.to = to;
 	}

@@ -1,8 +1,14 @@
-package descent.broadcast.causal.prcbroadcast;
+package descent.causalbroadcast;
 
-import descent.broadcast.causal.prcbroadcast.routing.MConnectTo;
-import descent.broadcast.causal.prcbroadcast.routing.MRemoveRoute;
-import descent.broadcast.causal.prcbroadcast.routing.SprayWithRouting;
+import descent.causalbroadcast.messages.IMControlMessage;
+import descent.causalbroadcast.messages.MAlpha;
+import descent.causalbroadcast.messages.MBeta;
+import descent.causalbroadcast.messages.MBuffer;
+import descent.causalbroadcast.messages.MPi;
+import descent.causalbroadcast.messages.MRho;
+import descent.causalbroadcast.routingbispray.MConnectTo;
+import descent.causalbroadcast.routingbispray.MRemoveRoute;
+import descent.causalbroadcast.routingbispray.SprayWithRouting;
 import peersim.cdsim.CDProtocol;
 import peersim.core.Node;
 import peersim.edsim.EDProtocol;
@@ -10,16 +16,16 @@ import peersim.edsim.EDProtocol;
 // Whole protocol at once because peersim does not handle inheritance very well.
 public class WholePRCcast implements EDProtocol, CDProtocol {
 
-	public PreventiveReliableCausalBroadcast prcb;
+	public BiPreventiveReliableCausalBroadcast prcb;
 	public SprayWithRouting swr;
 
 	public WholePRCcast(String prefix) {
-		this.prcb = new PreventiveReliableCausalBroadcast(prefix);
+		this.prcb = new BiPreventiveReliableCausalBroadcast(prefix);
 		this.swr = new SprayWithRouting(this.prcb);
 	}
 
 	public WholePRCcast() {
-		this.prcb = new PreventiveReliableCausalBroadcast();
+		this.prcb = new BiPreventiveReliableCausalBroadcast();
 		this.swr = new SprayWithRouting(this.prcb);
 	}
 
