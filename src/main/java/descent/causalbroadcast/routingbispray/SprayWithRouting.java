@@ -38,6 +38,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public HashBag<Node> inUse; // outview -> # control messages before removal
 
+	////////////////////////////////////////////////////////////////////////////
+
 	public SprayWithRouting(PreventiveReliableCausalBroadcast prcb) {
 		this.prcb = prcb;
 
@@ -152,7 +154,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void leave() {
-		// (TODO)
+		// (TODO) (XXX)
 		// #0 Goes down.
 		this.isUp = false;
 		// #1 Immediately remove in the in-views.
@@ -193,6 +195,22 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// (TODO)
 	}
 
+	public void addRoute(Node mediator, Node to) {
+		this.routes.addRoute(to, mediator);
+	}
+
+	public void removeRouteAsMediator(Node from, Node to) { // this process is a
+															// mediator
+		this.inUse.remove(from, 1);
+		this.inUse.remove(to, 1);
+	}
+
+	public void removeRouteAsEndProcess(Node mediator, Node to) {
+		this.routes.removeRoute(to);
+	}
+
+	// CONTROL MESSAGES:
+
 	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
 		// #1 mark nodes as currently used
 		if (to != this.node) {
@@ -201,13 +219,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 		// #2 send the message
 		this._sendControlMessage(from, new MConnectTo(from, to, this.node), "connect to");
-	}
-
-	public void receiveMConnectTo(Node from, Node to, Node mediator) {
-		// #1 add the route
-		this.routes.addRoute(to, mediator);
-		// #2 send an alpha message to start adding the new link
-		this.sendAlpha(from, to);
 	}
 
 	// from: process A; to: process B; A -> alpha -> B
@@ -351,10 +362,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		return (!this.prcb.isUnsafe(process) && this.outview.contains(process)) || this.inview.contains(process);
 	}
 
-	/**
-	 * Reset the internal structures. Not very clean but garbage collecting will
-	 * do the job.
-	 */
 	private void _clear() {
 		this.routes = new Routes();
 		this.outview = new SprayPartialView();
@@ -371,19 +378,5 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.outview.addNeighbor(neighbor);
 		return alreadyExists;
 
-	}
-
-	public void addRoute(Node mediator, Node to) {
-		this.routes.addRoute(to, mediator);
-	}
-
-	public void removeRouteAsMediator(Node from, Node to) { // this process is a
-															// mediator
-		this.inUse.remove(from, 1);
-		this.inUse.remove(to, 1);
-	}
-
-	public void removeRouteAsEndProcess(Node mediator, Node to) {
-		this.routes.removeRoute(to);
 	}
 }

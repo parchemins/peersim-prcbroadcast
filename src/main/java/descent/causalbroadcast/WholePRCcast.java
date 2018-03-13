@@ -52,36 +52,37 @@ public class WholePRCcast implements EDProtocol, CDProtocol {
 
 		} else if (message instanceof MRemoveRoute) {
 			MRemoveRoute m = (MRemoveRoute) message;
-			this.swr.removeRoute(m.from, m.to);
+			assert (m.mediator == this.prcb.node);
+			this.swr.removeRouteAsMediator(m.from, m.to);
 
 		} else if (message instanceof IMControlMessage) {
 			IMControlMessage imcm = (IMControlMessage) message;
-			if (imcm.getReceiver() == prcb.node) {
+			if (imcm.getReceiver() == this.prcb.node) {
+				// receiver
 				if (message instanceof MAlpha) {
-					prcb.receiveAlpha(imcm.getFrom(), imcm.getTo());
+					this.prcb.receiveAlpha(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MBeta) {
-					prcb.receiveBeta(imcm.getFrom(), imcm.getTo());
+					this.prcb.receiveBeta(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MPi) {
-					prcb.receivePi(imcm.getFrom(), imcm.getTo());
+					this.prcb.receivePi(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MRho) {
-					prcb.receiveRho(imcm.getFrom(), imcm.getTo());
+					this.prcb.receiveRho(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MBuffer) {
-					prcb.receiveBuffer(imcm.getFrom(), imcm.getTo(), ((MBuffer) message).messages);
-				} else if (message instanceof MConnectTo) {
-					swr.receiveMConnectTo(imcm.getFrom(), imcm.getTo(), ((MConnectTo) message).mediator);
+					this.prcb.receiveBuffer(imcm.getFrom(), imcm.getTo(), ((MBuffer) message).messages);
 				}
 
 			} else {
+				// mediator
 				if (message instanceof MAlpha) {
-					swr.sendAlpha(imcm.getFrom(), imcm.getTo());
+					this.swr.sendAlpha(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MBeta) {
-					swr.sendBeta(imcm.getFrom(), imcm.getTo());
+					this.swr.sendBeta(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MPi) {
-					swr.sendPi(imcm.getFrom(), imcm.getTo());
-					swr.removeRoute(imcm.getFrom(), imcm.getTo());
+					this.swr.sendPi(imcm.getFrom(), imcm.getTo());
+					this.swr.removeRouteAsMediator(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MRho) {
-					swr.sendRho(imcm.getFrom(), imcm.getTo());
-					swr.removeRoute(imcm.getFrom(), imcm.getTo());
+					this.swr.sendRho(imcm.getFrom(), imcm.getTo());
+					this.swr.removeRouteAsMediator(imcm.getFrom(), imcm.getTo());
 				}
 			}
 
