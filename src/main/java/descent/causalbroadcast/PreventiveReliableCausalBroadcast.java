@@ -20,9 +20,12 @@ import peersim.edsim.EDProtocol;
  * message. Message overhead is constant (same principle of pcbroadcast). Local
  * structure scales with network dynamicity and traffic (they vary over time).
  */
-public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol {
+public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol {
 
-	IRoutingService irs; // (TODO) init correctly
+	IRoutingService irs;
+
+	// #1 check safety directional or bidirectional
+	private static EArcType TYPE = EArcType.BIDIRECTIONAL;
 
 	// #2 reliability structure
 	private Integer counter = 0;
@@ -34,18 +37,28 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 	public HashMap<Node, ArrayList<MReliableBroadcast>> buffersPi;
 	public HashMap<Node, Boolean> receiptsOfPi;
 
+	public HashSet<Node> unsafe;
+
 	/////////
 
-	public BiPreventiveReliableCausalBroadcast(String prefix) {
+	public PreventiveReliableCausalBroadcast(String prefix) {
+		this.expected = new HashMap<Node, HashSet<MReliableBroadcast>>();
+
 		this.buffersAlpha = new HashMap<Node, ArrayList<MReliableBroadcast>>();
 		this.buffersPi = new HashMap<Node, ArrayList<MReliableBroadcast>>();
 		this.receiptsOfPi = new HashMap<Node, Boolean>();
+
+		this.unsafe = new HashSet<Node>();
 	}
 
-	public BiPreventiveReliableCausalBroadcast() {
+	public PreventiveReliableCausalBroadcast() {
+		this.expected = new HashMap<Node, HashSet<MReliableBroadcast>>();
+
 		this.buffersAlpha = new HashMap<Node, ArrayList<MReliableBroadcast>>();
 		this.buffersPi = new HashMap<Node, ArrayList<MReliableBroadcast>>();
 		this.receiptsOfPi = new HashMap<Node, Boolean>();
+
+		this.unsafe = new HashSet<Node>();
 	}
 
 	// SAFETY:
@@ -54,26 +67,19 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 	 * This process wants to add another process in its out-view. This starts
 	 * the safety check of the new link.
 	 * 
-	 * @param n
+	 * @param to
 	 *            The new neighbor.
 	 */
-	public void openO(Node n) {
-		// (TODO) remove n from link to use. n is not safe.
-		irs.sendAlpha(this.node, n);
-	}
+	public void openO(Node to) {
+		boolean alreadyExisted = this.irs.addToOutView(to);
+		// not (already safe or being safety checked)
+		if (!alreadyExisted && !this.isUnsafe(to)) {
+			this.unsafe.add(to);
 
-	/**
-	 * Another process want to add this process in its out-view. The link is not
-	 * safe yet.
-	 * 
-	 * @param n
-	 *            The neighbor that adds this process in its out-view.
-	 * 
-	 */
-	public void openI(Node n) {
-		// #0 (TODO) remove n from safe in-view links. Any messages related to
-		// causal broadcast and received from this link should be ignored
-		// altogether.
+			assert (!this.irs.isSafe(to));
+			// start safety check communication pattern
+			irs.sendAlpha(this.node, to);
+		}
 	}
 
 	/**
@@ -85,6 +91,10 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 	 *            to = this.node
 	 */
 	public void receiveAlpha(Node from, Node to) {
+		assert (!this.irs.isSafe(from));
+
+		this.unsafe.add(from);
+
 		this.buffersAlpha.put(from, new ArrayList<MReliableBroadcast>());
 		this.buffersPi.put(from, new ArrayList<MReliableBroadcast>());
 		this.receiptsOfPi.put(from, false);
@@ -100,8 +110,10 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 	 *            The node we add in our out-view.
 	 */
 	public void receiveBeta(Node from, Node to) {
+		assert (!this.irs.isSafe(to));
+
 		this.buffersAlpha.put(to, new ArrayList<MReliableBroadcast>());
-		this.buffersPi.put(from, new ArrayList<MReliableBroadcast>());
+		this.buffersPi.put(to, new ArrayList<MReliableBroadcast>());
 		this.receiptsOfPi.put(to, false);
 		this.irs.sendPi(from, to);
 	}
@@ -115,6 +127,8 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 	 *            to = this.node
 	 */
 	public void receivePi(Node from, Node to) {
+		assert (!this.irs.isSafe(from));
+
 		this.receiptsOfPi.put(from, true);
 		this.irs.sendRho(from, to);
 	}
@@ -128,8 +142,16 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 	 *            The node that we add as neighbor.
 	 */
 	public void receiveRho(Node from, Node to) {
-		this.receiptsOfPi.put(to, true);
-		this.irs.sendBuffer(to, from, to, this.buffersAlpha.get(to));
+		assert (!this.irs.isSafe(to));
+
+		if (PreventiveReliableCausalBroadcast.TYPE == EArcType.BIDIRECTIONAL) {
+			// #A continue protocol
+			this.receiptsOfPi.put(to, true);
+			this.irs.sendBuffer(to, from, to, this.buffersAlpha.get(to));
+		} else {
+			// #B it 's enough for directional
+			this.clean(to);
+		}
 		// (TODO) this link is now safe for "from" -> "to"
 	}
 
@@ -150,8 +172,13 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 		// #0 send a buffer back
 		if (this.node == to) {
 			origin = from;
-			this.irs.sendBuffer(from, from, to, this.buffersPi.get(from));
+			if (PreventiveReliableCausalBroadcast.TYPE == EArcType.BIDIRECTIONAL) {
+				// last exchange for bidirectional safety
+				this.irs.sendBuffer(from, from, to, this.buffersPi.get(from));
+			}
 		}
+
+		assert (!this.irs.isSafe(origin));
 
 		// #1 filter useless messages of buffer
 		bufferBeta.removeAll(this.buffersAlpha.get(origin)); // potential
@@ -166,8 +193,13 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 		HashSet<MReliableBroadcast> toExpect = new HashSet<MReliableBroadcast>(this.buffersPi.get(origin));
 		toExpect.removeAll(bufferBeta);
 		this.expected.put(origin, toExpect);
-		// (TODO) adds the neighbor in our in-view
+
 		this.clean(origin);
+
+		// #4 add to inview
+		if (this.node == to) {
+			this.irs.addToInView(origin);
+		}
 	}
 
 	/**
@@ -313,6 +345,7 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 	}
 
 	private void clean(Node neighbor) {
+		this.unsafe.remove(neighbor);
 		this.buffersAlpha.remove(neighbor);
 		this.buffersPi.remove(neighbor);
 		this.receiptsOfPi.remove(neighbor);
@@ -340,9 +373,17 @@ public class BiPreventiveReliableCausalBroadcast implements EDProtocol, CDProtoc
 		}
 	}
 
+	public void setIRS(IRoutingService irs) {
+		this.irs = irs;
+	}
+
+	public boolean isUnsafe(Node neighbor) {
+		return this.unsafe.contains(neighbor);
+	}
+
 	@Override
 	public Object clone() {
-		return new BiPreventiveReliableCausalBroadcast();
+		return new PreventiveReliableCausalBroadcast();
 	}
 
 }

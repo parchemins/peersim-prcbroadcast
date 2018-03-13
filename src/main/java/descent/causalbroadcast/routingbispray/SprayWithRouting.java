@@ -6,7 +6,8 @@ import java.util.List;
 
 import org.apache.commons.collections4.bag.HashBag;
 
-import descent.causalbroadcast.BiPreventiveReliableCausalBroadcast;
+import descent.causalbroadcast.PreventiveReliableCausalBroadcast;
+import descent.causalbroadcast.WholePRCcast;
 import descent.causalbroadcast.messages.MAlpha;
 import descent.causalbroadcast.messages.MBeta;
 import descent.causalbroadcast.messages.MBuffer;
@@ -28,28 +29,24 @@ import peersim.transport.Transport;
  */
 public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
-	public static int pid; // (TODO) rework that
-
-	public BiPreventiveReliableCausalBroadcast parent; // (TODO) Interface CB +
-														// PS
+	public PreventiveReliableCausalBroadcast prcb;
 
 	public Routes routes;
 
-	public SprayPartialView outview;
-	public HashBag<Node> inview;
+	public SprayPartialView outview; // In charge of this range of links
+	public HashSet<Node> inview; // Other used links but cannot modify
 
-	public HashSet<Node> unsafe;
-	public HashBag<Node> inUse; // safe-> # control messages before removal
+	public HashBag<Node> inUse; // outview -> # control messages before removal
 
-	public SprayWithRouting(BiPreventiveReliableCausalBroadcast prcb) {
-		this.parent = prcb;
+	public SprayWithRouting(PreventiveReliableCausalBroadcast prcb) {
+		this.prcb = prcb;
 
 		this.routes = new Routes();
 
 		this.outview = new SprayPartialView();
-		this.inview = new HashBag<Node>();
+		this.inview = new HashSet<Node>();
 
-		this.unsafe = new HashSet<Node>();
+		this.inUse = new HashBag<Node>();
 	}
 
 	// PEER-SAMPLING:
@@ -86,7 +83,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		Integer age = 0;
 		ArrayList<Node> possibleOldest = new ArrayList<Node>();
 		for (Node neighbor : this.outview.getPeers()) {
-			if (!this.inUse.contains(neighbor) && !this.unsafe.contains(neighbor)) {
+			if (!this.inUse.contains(neighbor) && this.isSafe(neighbor)) {
 				if (age < this.outview.ages.get(neighbor)) {
 					age = this.outview.ages.get(neighbor);
 					possibleOldest = new ArrayList<Node>();
@@ -109,7 +106,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			clone.remove(q, 1);
 		}
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
-			if (this.inUse.contains(neighbor) || this.unsafe.contains(neighbor)) {
+			if (this.inUse.contains(neighbor) || this.isSafe(neighbor)) {
 				clone.remove(neighbor);
 			}
 		}
@@ -141,7 +138,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			// #1 the very first connection is safe
 			this.outview.addNeighbor(contact);
 			// #2 subsequent ones might not be
-			SprayWithRouting swr = (SprayWithRouting) contact.getProtocol(SprayWithRouting.pid);
+			SprayWithRouting swr = ((WholePRCcast) contact.getProtocol(WholePRCcast.PID)).swr;
 			swr.onSubscription(joiner);
 		}
 		this.isUp = true;
@@ -160,7 +157,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.isUp = false;
 		// #1 Immediately remove in the in-views.
 		for (Node neighbor : this.outview.getPeers()) {
-			SprayWithRouting swr = (SprayWithRouting) neighbor.getProtocol(SprayWithRouting.pid);
+			SprayWithRouting swr = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).swr;
 			swr._closeI(this.node);
 		}
 	}
@@ -174,8 +171,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 */
 	private void _closeI(Node leaver) {
 		this.inview.remove(leaver);
-		this.parent.closeI(leaver);
-		this.unsafe.remove(leaver);
+		this.prcb.closeI(leaver);
 		this._removeAllRoutes(leaver); // (TODO)
 	}
 
@@ -235,16 +231,18 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	private void _sendControlMessage(Node target, Object m, String info) {
+		assert (this.routes.hasRoute(target)
+				|| (this.inview.contains(target) || this.outview.contains(target) || this.inUse.contains(target))
+						&& this.isSafe(target)); // no route nor forward
+
 		if (this.routes.hasRoute(target)) {
 			this._send(this.routes.getRoute(target), m); // route
 		} else if ((this.inview.contains(target) || this.outview.contains(target) || this.inUse.contains(target))
-				&& !this.unsafe.contains(target)) {
+				&& this.isSafe(target)) {
 			this._send(target, m); // forward
 			if (m instanceof MRho || m instanceof MPi) {
 				this.inUse.remove(target, 1);
 			}
-		} else {
-			System.out.println("Cannot find route nor forward " + info);
 		}
 	}
 
@@ -252,8 +250,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #0 bidirectional, Process "to" also sends a buffer
 		Node receiver = this._getReceiver(from, to);
 		Node sender = this._getSender(from, to);
+		if (receiver != dest) { // ugly fix for bidirect
+			Node temp = receiver;
+			receiver = sender;
+			sender = temp;
+		}
+
 		// #1 check if there is an issue with algo
-		if (!this.unsafe.contains(receiver)) {
+		if (this.isSafe(receiver)) {
 			System.out.println("Send buffer but seems safe already");
 			return;
 		}
@@ -268,11 +272,12 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _send(Node to, Object m) {
-		if (((this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to))
-				&& !this.unsafe.contains(to))) {
-			((Transport) this.node.getProtocol(FastConfig.getTransport(SprayWithRouting.pid))).send(this.node, to, m,
-					SprayWithRouting.pid);
-		}
+		assert (((this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to))
+				&& this.isSafe(to)));
+
+		((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).send(this.node, to, m,
+				WholePRCcast.PID);
+
 	}
 
 	/**
@@ -282,10 +287,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _sendUnsafe(Node to, Object m) {
-		if ((this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to))) {
-			((Transport) this.node.getProtocol(FastConfig.getTransport(SprayWithRouting.pid))).send(this.node, to, m,
-					SprayWithRouting.pid);
-		}
+		assert (this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to));
+
+		((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).send(this.node, to, m,
+				WholePRCcast.PID);
 	}
 
 	public void sendToOutview(MReliableBroadcast m) {
@@ -295,48 +300,29 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public Node _getReceiver(Node from, Node to) {
-		if (this.node == to) {
-			return from;
-		} else {
-			return to;
-		}
+		return this.node == to ? from : to;
 	}
 
 	public Node _getSender(Node from, Node to) {
-		if (this.node == to) {
-			return to;
-		} else {
-			return from;
-		}
+		return this.node == to ? to : from;
 	}
 
 	public HashSet<Node> getOutview() {
 		// since bidirectionnal, outview includes inview
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.outview.getPeers()) {
-			if (!this.unsafe.contains(n))
+			if (this.isSafe(n))
 				result.add(n);
 		}
 		for (Node n : this.inview) {
-			if (!this.unsafe.contains(n))
+			if (this.isSafe(n))
 				result.add(n);
 		}
 		for (Node n : this.inUse) {
-			if (this.unsafe.contains(n)) {
-				System.out.println("inuse should not have unsafe links");
-			} else {
-				result.add(n);
-			}
+			assert (this.isSafe(n)); // inuse should not have unsafe links
+			result.add(n);
 		}
 		return result;
-	}
-
-	public void setNeighborSafe(Node n) {
-		this.unsafe.remove(n);
-	}
-
-	public void setNeighborUnsafe(Node n) {
-		this.unsafe.add(n);
 	}
 
 	// PEER-SAMPLING BASICS:
@@ -353,12 +339,16 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	@Override
 	public IPeerSampling clone() {
-		return new SprayWithRouting(this.parent);
+		return new SprayWithRouting(this.prcb);
 	}
 
 	@Override
 	protected boolean pFail(List<Node> path) {
 		return false;
+	}
+
+	public boolean isSafe(Node process) {
+		return (!this.prcb.isUnsafe(process) && this.outview.contains(process)) || this.inview.contains(process);
 	}
 
 	/**
@@ -368,13 +358,32 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	private void _clear() {
 		this.routes = new Routes();
 		this.outview = new SprayPartialView();
-		this.inview = new HashBag<Node>();
-		this.unsafe = new HashSet<Node>();
+		this.inview = new HashSet<Node>();
 	}
 
-	public void removeRoute(Node from, Node to) {
+	public void addToInView(Node neighbor) {
+		assert (((WholePRCcast) neighbor.getProtocol(WholePRCcast.PID)).swr.outview.contains(this.node));
+		this.inview.add(neighbor);
+	}
+
+	public boolean addToOutView(Node neighbor) {
+		boolean alreadyExists = !this.outview.contains(neighbor);
+		this.outview.addNeighbor(neighbor);
+		return alreadyExists;
+
+	}
+
+	public void addRoute(Node mediator, Node to) {
+		this.routes.addRoute(to, mediator);
+	}
+
+	public void removeRouteAsMediator(Node from, Node to) { // this process is a
+															// mediator
 		this.inUse.remove(from, 1);
 		this.inUse.remove(to, 1);
 	}
 
+	public void removeRouteAsEndProcess(Node mediator, Node to) {
+		this.routes.removeRoute(to);
+	}
 }
