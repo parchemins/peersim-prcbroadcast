@@ -137,31 +137,48 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this._clear();
 		this._setNode(joiner);
 		if (contact != null) {
+			SprayWithRouting swr = ((WholePRCcast) contact.getProtocol(WholePRCcast.PID)).swr;
 			// #1 the very first connection is safe
 			this.outview.addNeighbor(contact);
+			swr.inview.add(this.node);
 			// #2 subsequent ones might not be
-			SprayWithRouting swr = ((WholePRCcast) contact.getProtocol(WholePRCcast.PID)).swr;
 			swr.onSubscription(joiner);
 		}
 		this.isUp = true;
 	}
 
 	public void onSubscription(Node origin) {
-		this.inview.add(origin);
+		HashBag<Node> safeNeighbors = new HashBag<Node>();
 		for (Node neighbor : this.outview.getPeers()) {
-			this._send(neighbor, new MConnectTo(neighbor, origin, this.node));
+			if (this.isSafe(neighbor)) {
+				safeNeighbors.add(neighbor);
+			}
+		}
+		if (safeNeighbors.isEmpty()) {
+			// #1 keep the subscription for ourself
+			SprayWithRouting swr = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
+			this.outview.addNeighbor(origin);
+			swr.inview.add(this.node);
+		} else {
+			// #2 share the subscription to neighbors
+			for (Node neighbor : safeNeighbors) {
+				this._send(neighbor, new MConnectTo(neighbor, origin, this.node));
+			}
 		}
 	}
 
 	public void leave() {
 		// (TODO) (XXX)
 		// #0 Goes down.
-		this.isUp = false;
+		// this.isUp = false;
 		// #1 Immediately remove in the in-views.
-		for (Node neighbor : this.outview.getPeers()) {
-			SprayWithRouting swr = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).swr;
-			swr._closeI(this.node);
-		}
+		/*
+		 * for (Node neighbor : this.outview.getPeers()) { SprayWithRouting swr
+		 * = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).swr;
+		 * swr._closeI(this.node);
+		 * 
+		 * }
+		 */
 	}
 
 	/**
@@ -172,6 +189,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The leaver identity.
 	 */
 	private void _closeI(Node leaver) {
+		// (TODO) (XXX)
 		this.inview.remove(leaver);
 		this.prcb.closeI(leaver);
 		this._removeAllRoutes(leaver); // (TODO)
@@ -222,7 +240,11 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	// from: process A; to: process B; A -> alpha -> B
 	public void sendAlpha(Node from, Node to) {
-		this._sendControlMessage(to, new MAlpha(from, to), "alpha");
+		Node mediator = null;
+		if (this.node != from && this.node != to) {
+			mediator = this.node; // ugly
+		}
+		this._sendControlMessage(to, new MAlpha(from, to, mediator), "alpha");
 	}
 
 	// from: process A; to: process B; B -> beta -> A
@@ -247,6 +269,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 		if (this.routes.hasRoute(target)) {
 			this._send(this.routes.getRoute(target), m); // route
+			
 		} else if ((this.inview.contains(target) || this.outview.contains(target) || this.inUse.contains(target))
 				&& this.isSafe(target)) {
 			this._send(target, m); // forward
@@ -267,10 +290,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 
 		// #1 check if there is an issue with algo
-		if (this.isSafe(receiver)) {
-			System.out.println("Send buffer but seems safe already");
-			return;
-		}
+		assert (!this.isSafe(receiver)); // was safe already
+
 		// #2 send the buffer
 		this._sendUnsafe(receiver, new MBuffer(from, to, sender, receiver, buffer));
 	}
@@ -348,6 +369,20 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	@Override
+	public Iterable<Node> getAliveNeighbors() {
+		HashSet<Node> result = new HashSet<Node>();
+		for (Node n : this.outview.getPeers())
+			if (n.isUp())
+				result.add(n);
+
+		for (Node n : this.inview)
+			if (n.isUp())
+				result.add(n);
+		// System.out.println(this.outview.size() + " -- " + this.inview.size());
+		return result;
+	}
+
+	@Override
 	public IPeerSampling clone() {
 		return new SprayWithRouting(this.prcb);
 	}
@@ -373,9 +408,9 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public boolean addToOutView(Node neighbor) {
-		boolean alreadyExists = !this.outview.contains(neighbor);
+		boolean notAlreadyExists = !this.outview.contains(neighbor);
 		this.outview.addNeighbor(neighbor);
-		return alreadyExists;
+		return notAlreadyExists;
 
 	}
 }

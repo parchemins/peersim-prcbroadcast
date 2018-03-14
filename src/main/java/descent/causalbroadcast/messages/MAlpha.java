@@ -10,10 +10,12 @@ public class MAlpha implements IMControlMessage {
 
 	public final Node from;
 	public final Node to;
+	public final Node mediator;
 
-	public MAlpha(Node from, Node to) {
+	public MAlpha(Node from, Node to, Node mediator) {
 		this.from = from;
 		this.to = to;
+		this.mediator = mediator;
 	}
 
 	public Node getFrom() {

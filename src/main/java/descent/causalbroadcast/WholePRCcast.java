@@ -41,10 +41,12 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	}
 
 	public void nextCycle(Node node, int protocolId) {
-		this.swr.periodicCall();
+		// (TODO) reenable this.swr.periodicCall();
 	}
 
 	public void processEvent(Node node, int protocolId, Object message) {
+		this.prcb._setNode(node);
+
 		// Give the message to the proper sub-protocol
 		if (message instanceof MConnectTo) {
 			MConnectTo m = (MConnectTo) message;
@@ -59,9 +61,12 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 
 		} else if (message instanceof IMControlMessage) {
 			IMControlMessage imcm = (IMControlMessage) message;
+
 			if (imcm.getReceiver() == this.prcb.node) {
 				// receiver
 				if (message instanceof MAlpha) {
+					MAlpha m = (MAlpha) message;
+					this.swr.addRoute(m.mediator, m.from);
 					this.prcb.receiveAlpha(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MBeta) {
 					this.prcb.receiveBeta(imcm.getFrom(), imcm.getTo());

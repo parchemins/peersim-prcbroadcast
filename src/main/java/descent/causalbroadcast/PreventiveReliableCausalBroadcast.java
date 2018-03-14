@@ -71,14 +71,15 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 *            The new neighbor.
 	 */
 	public void openO(Node to) {
-		boolean alreadyExisted = this.irs.addToOutView(to);
+		boolean isNew = this.irs.addToOutView(to);
 		// not (already safe or being safety checked)
-		if (!alreadyExisted && !this.isUnsafe(to)) {
+		if (isNew) {
 			this.unsafe.add(to);
 
 			assert (!this.irs.isSafe(to));
+
 			// start safety check communication pattern
-			irs.sendAlpha(this.node, to);
+			this.irs.sendAlpha(this.node, to);
 		}
 	}
 
@@ -98,6 +99,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		this.buffersAlpha.put(from, new ArrayList<MReliableBroadcast>());
 		this.buffersPi.put(from, new ArrayList<MReliableBroadcast>());
 		this.receiptsOfPi.put(from, false);
+
 		this.irs.sendBeta(from, to);
 	}
 
@@ -148,11 +150,12 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 			// #A continue protocol
 			this.receiptsOfPi.put(to, true);
 			this.irs.sendBuffer(to, from, to, this.buffersAlpha.get(to));
+			// safe "from"->"to", not safe on receipt : no clean yet
+			this.unsafe.remove(to);
 		} else {
 			// #B it 's enough for directional
 			this.clean(to);
 		}
-		// (TODO) this link is now safe for "from" -> "to"
 	}
 
 	/**
@@ -367,7 +370,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 * @param n
 	 *            The node hosting this protocol.
 	 */
-	protected void _setNode(Node n) {
+	public void _setNode(Node n) {
 		if (this.node == null) {
 			this.node = n;
 		}
