@@ -2,6 +2,7 @@ package descent.observers.structure;
 
 import org.apache.commons.collections4.IteratorUtils;
 
+import descent.controllers.IComposition;
 import descent.rps.IDynamic;
 import descent.rps.IPeerSampling;
 import peersim.config.Configuration;
@@ -45,9 +46,9 @@ public class Observer implements Control {
 
 			for (int i = 0; i < Network.size(); i++) {
 				Node n = Network.get(i);
-				IDynamic d = (IDynamic) n.getProtocol(pid);
+				IDynamic d = ((IComposition) n.getProtocol(pid)).getPeerSampling();
 				if (d.isUp()) {
-					IPeerSampling pss = (IPeerSampling) n.getProtocol(pid);
+					IPeerSampling pss = ((IComposition) n.getProtocol(pid)).getPeerSampling();
 					observer.addStrict(n, pss);
 					final int size = IteratorUtils.toList(pss.getAliveNeighbors().iterator()).size();
 					if (size < min) {

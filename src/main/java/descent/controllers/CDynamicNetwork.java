@@ -3,6 +3,7 @@ package descent.controllers;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import descent.causalbroadcast.WholePRCcast;
 import descent.rps.APeerSampling;
 import descent.rps.IPeerSampling;
 import peersim.config.Configuration;
@@ -74,7 +75,7 @@ public class CDynamicNetwork implements Control {
 			for (int i = 0; i < nsize; i++) {
 				final Node node = Network.get(i);
 				for (Integer pid : this.PROTOCOLS) {
-					IPeerSampling d = (IPeerSampling) node.getProtocol(pid);
+					IPeerSampling d = ((IComposition) node.getProtocol(pid)).getPeerSampling();
 					d.leave();
 				}
 				CDynamicNetwork.availableNodes.add(node);
