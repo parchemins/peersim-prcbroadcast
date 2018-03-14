@@ -9,6 +9,8 @@ import descent.causalbroadcast.messages.MRho;
 import descent.causalbroadcast.routingbispray.MConnectTo;
 import descent.causalbroadcast.routingbispray.MRemoveRoute;
 import descent.causalbroadcast.routingbispray.SprayWithRouting;
+import descent.controllers.IComposition;
+import descent.rps.APeerSampling;
 import peersim.cdsim.CDProtocol;
 import peersim.config.Configuration;
 import peersim.core.Node;
@@ -16,7 +18,7 @@ import peersim.edsim.EDProtocol;
 
 // Whole protocol at once because peersim does not handle inheritance very well.
 // In particular, static values such as pid are not consistent.
-public class WholePRCcast implements EDProtocol, CDProtocol {
+public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 
 	public static String PAR_PID = "pid";
 	public static Integer PID;
@@ -65,8 +67,10 @@ public class WholePRCcast implements EDProtocol, CDProtocol {
 					this.prcb.receiveBeta(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MPi) {
 					this.prcb.receivePi(imcm.getFrom(), imcm.getTo());
+					this.swr.removeRouteAsEndProcess(this.swr.routes.getRoute(imcm.getFrom()), imcm.getFrom());
 				} else if (message instanceof MRho) {
 					this.prcb.receiveRho(imcm.getFrom(), imcm.getTo());
+					this.swr.removeRouteAsEndProcess(this.swr.routes.getRoute(imcm.getTo()), imcm.getTo());
 				} else if (message instanceof MBuffer) {
 					this.prcb.receiveBuffer(imcm.getFrom(), imcm.getTo(), ((MBuffer) message).messages);
 				}
@@ -93,6 +97,10 @@ public class WholePRCcast implements EDProtocol, CDProtocol {
 	public Object clone() {
 		// TODO maybe clone some configurations
 		return new WholePRCcast();
+	}
+
+	public APeerSampling getPeerSampling() {
+		return this.swr;
 	}
 
 }

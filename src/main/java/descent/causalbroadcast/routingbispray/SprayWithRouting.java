@@ -199,14 +199,13 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.routes.addRoute(to, mediator);
 	}
 
-	public void removeRouteAsMediator(Node from, Node to) { // this process is a
-															// mediator
+	public void removeRouteAsMediator(Node from, Node to) {
 		this.inUse.remove(from, 1);
 		this.inUse.remove(to, 1);
 	}
 
 	public void removeRouteAsEndProcess(Node mediator, Node to) {
-		this.routes.removeRoute(to);
+		this.routes.removeRoute(to, mediator);
 	}
 
 	// CONTROL MESSAGES:

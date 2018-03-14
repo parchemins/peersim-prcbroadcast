@@ -99,7 +99,7 @@ public class CDynamicNetwork implements Control {
 				final Node rem = CDynamicNetwork.graph.get(pos);
 				this.removeNode(rem);
 				for (Integer pid : this.PROTOCOLS) {
-					APeerSampling d = (APeerSampling) rem.getProtocol(pid);
+					APeerSampling d = ((IComposition) rem.getProtocol(pid)).getPeerSampling();
 					if (d.isUp())
 						d.leave();
 				}
@@ -156,14 +156,14 @@ public class CDynamicNetwork implements Control {
 
 	public void removeNode(Node leaver) {
 		for (Integer pid : this.PROTOCOLS) {
-			APeerSampling leaverProtocol = (APeerSampling) leaver.getProtocol(pid);
+			APeerSampling leaverProtocol = ((IComposition) leaver.getProtocol(pid)).getPeerSampling();
 			leaverProtocol.leave();
 		}
 	}
 
 	public void addNode(Node joiner, Node contact) {
 		for (Integer pid : this.PROTOCOLS) {
-			APeerSampling joinerProtocol = (APeerSampling) joiner.getProtocol(pid);
+			APeerSampling joinerProtocol = ((IComposition) joiner.getProtocol(pid)).getPeerSampling();
 			joinerProtocol.join(joiner, contact);
 		}
 	}
