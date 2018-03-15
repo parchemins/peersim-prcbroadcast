@@ -72,13 +72,18 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 *            The new neighbor.
 	 */
 	public boolean openO(Node to) {
+		boolean alreadySafe = this.irs.isSafe(to);
+		System.out.println("already safe " + alreadySafe);
 		boolean isNew = this.irs.addToOutView(to);
 		// not (already safe or being safety checked)
 		if (isNew) {
 			this.unsafe.add(to);
 
 			System.out.println("openO " + this.node.getID() + "; to " + to.getID());
-			System.out.println(((SprayWithRouting) this.irs).inview.contains(to));
+			System.out.println("THIS " +((SprayWithRouting) this.irs).inview.contains(to));
+			System.out.println("OTHER "+ 
+					((SprayWithRouting) ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr).isSafe(to));
+
 			assert (!this.irs.isSafe(to));
 
 			// start safety check communication pattern
