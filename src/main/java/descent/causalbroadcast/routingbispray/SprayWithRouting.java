@@ -59,22 +59,20 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		if (q != null) {
 			// #2 prepare a sample
 			HashBag<Node> sample = this._getSample(q);
-			if (!sample.isEmpty()) {
-				this.outview.removeNeighbor(q);
-				this.inview.add(q);
-				this.sendMConnectTo(q, this.node, new MConnectTo(q, this.node, null));
-				// #A lock links for routing purpose
-				for (Node neighbor : sample) {
-					if (neighbor != this.node) {
-						this.inUse.add(neighbor);
-						this.inUse.add(q);
-						this.outview.removeNeighbor(neighbor);
-						this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
-					} else {
-						this.outview.removeNeighbor(q);
-						this.inview.add(q);
-						this.sendMConnectTo(q, this.node, new MConnectTo(q, this.node, null));
-					}
+
+			assert (!sample.isEmpty()); // contains at least q
+
+			// #3 lock links for routing purpose and #4 send connection messages
+			for (Node neighbor : sample) {
+				System.out.println("@" + this.node.getID() + " orders " + q.getID() + " -> " + neighbor.getID());
+				if (neighbor != this.node) {
+					assert (neighbor != q);
+					this.outview.removeNeighbor(neighbor);
+					this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
+				} else {
+					this.outview.removeNeighbor(q);
+					this.inview.add(q);
+					this.sendMConnectTo(q, this.node, new MConnectTo(q, this.node, null));
 				}
 
 			}
@@ -104,27 +102,33 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public HashBag<Node> _getSample(Node q) {
 		// #1 filter
 		HashBag<Node> clone = new HashBag<Node>(this.outview.partialView);
+		HashBag<Node> sample = new HashBag<Node>();
+		// #A add an occurrence of ourself to the sample
 		if (q != null) {
 			clone.remove(q, 1);
+			sample.add(this.node);
 		}
+		// #B discard currently used links and unsafe links
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
-			if (this.inUse.contains(neighbor) || this.isSafe(neighbor)) {
+			if (this.inUse.contains(neighbor) || !this.isSafe(neighbor)) {
 				clone.remove(neighbor);
 			}
 		}
+
 		// #2 random and possibly replace
-		Integer sampleSize = (int) Math.ceil(clone.size());
-		HashBag<Node> sample = new HashBag<Node>();
+		Integer sampleSize = (int) Math.ceil(clone.size() / 2.);
 		while (sample.size() < sampleSize && clone.size() > 0) {
 			ArrayList<Node> ugly = new ArrayList<Node>(clone.uniqueSet());
 			Node neighbor = ugly.get(CommonState.r.nextInt(ugly.size()));
+			System.out.println("t " + this.node.getID() + "q " + q.getID() + ";n " + neighbor.getID());
 			if (neighbor == q) {
 				sample.add(this.node);
 			} else {
-				sample.add(q);
+				sample.add(neighbor);
 			}
 			clone.remove(neighbor, 1);
 		}
+		
 		return sample;
 	}
 
@@ -230,12 +234,12 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
 		// #1 mark nodes as currently used
-		// if (to != this.node) {
-		this.inUse.add(from);
-		this.inUse.add(to);
-		// }
+		if (to != this.node) {
+			this.inUse.add(from);
+			this.inUse.add(to);
+		}
 		// #2 send the message
-		this._sendControlMessage(from, new MConnectTo(from, to, this.node), "connect to");
+		this._sendControlMessage(from, m, "connect to");
 	}
 
 	// from: process A; to: process B; A -> alpha -> B
@@ -263,19 +267,15 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	private void _sendControlMessage(Node target, Object m, String info) {
-		assert (this.routes.hasRoute(target)
-				|| (this.inview.contains(target) || this.outview.contains(target) || this.inUse.contains(target))
-						&& this.isSafe(target)); // no route nor forward
+		boolean route = this.routes.hasRoute(target) && this.isSafe(this.routes.getRoute(target));
+		boolean direct = this.isSafe(target);
 
-		if (this.routes.hasRoute(target)) {
+		assert (route || direct); // no route nor forward
+
+		if (route) {
 			this._send(this.routes.getRoute(target), m); // route
-
-		} else if ((this.inview.contains(target) || this.outview.contains(target) || this.inUse.contains(target))
-				&& this.isSafe(target)) {
+		} else if (direct) {
 			this._send(target, m); // forward
-			// if (m instanceof MRho || m instanceof MPi) {
-			// this.inUse.remove(target, 1);
-			// }
 		}
 	}
 
@@ -303,8 +303,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _send(Node to, Object m) {
-		assert (((this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to))
-				&& this.isSafe(to)));
+		assert (this.isSafe(to));
 
 		((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).send(this.node, to, m,
 				WholePRCcast.PID);
@@ -353,7 +352,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 				result.add(n);
 		}
 		for (Node n : this.inUse) {
-			assert (this.isSafe(n)); // inuse should not have unsafe links
+			// inuse should not have unsafe links
+			assert (!this.prcb.isUnsafe(n));
 			result.add(n);
 		}
 		return result;
@@ -375,14 +375,13 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public Iterable<Node> getAliveNeighbors() {
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.outview.getPeers())
-			if (n.isUp() && this.isSafe(n))
+			if (n.isUp() && this.isSafe(n)) // (TODO) inUse included?
 				result.add(n);
 
 		for (Node n : this.inview)
 			if (n.isUp())
 				result.add(n);
-		// System.out.println(this.outview.size() + " -- " +
-		// this.inview.size());
+
 		return result;
 	}
 
@@ -397,7 +396,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public boolean isSafe(Node process) {
-		return (!this.prcb.isUnsafe(process) && this.outview.contains(process)) || this.inview.contains(process);
+		return (this.outview.contains(process) && !this.prcb.unsafe.contains(process)) || this.inview.contains(process)
+				|| this.inUse.contains(process);
 	}
 
 	private void _clear() {

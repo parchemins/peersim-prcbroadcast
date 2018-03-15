@@ -8,6 +8,7 @@ import java.util.Iterator;
 import descent.causalbroadcast.messages.MRegularBroadcast;
 import descent.causalbroadcast.messages.MReliableBroadcast;
 import descent.causalbroadcast.routingbispray.IRoutingService;
+import descent.causalbroadcast.routingbispray.SprayWithRouting;
 import descent.rps.IMessage;
 import peersim.cdsim.CDProtocol;
 import peersim.core.Node;
@@ -76,6 +77,8 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		if (isNew) {
 			this.unsafe.add(to);
 
+			System.out.println("openO " + this.node.getID() + "; to " + to.getID());
+			System.out.println(((SprayWithRouting) this.irs).inview.contains(to));
 			assert (!this.irs.isSafe(to));
 
 			// start safety check communication pattern
@@ -150,6 +153,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		if (PreventiveReliableCausalBroadcast.TYPE == EArcType.BIDIRECTIONAL) {
 			// #A continue protocol
 			this.receiptsOfPi.put(to, true);
+			System.out.println("B");
 			this.irs.sendBuffer(to, from, to, this.buffersAlpha.get(to));
 			// safe "from"->"to", not safe on receipt : no clean yet
 			this.unsafe.remove(to);
@@ -178,6 +182,8 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 			origin = from;
 			if (PreventiveReliableCausalBroadcast.TYPE == EArcType.BIDIRECTIONAL) {
 				// last exchange for bidirectional safety
+				System.out.println("A");
+				System.out.println("@" + this.node.getID() + "; from " + from.getID() + "; to" + to.getID());
 				this.irs.sendBuffer(from, from, to, this.buffersPi.get(from));
 			}
 		}

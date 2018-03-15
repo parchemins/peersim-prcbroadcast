@@ -41,7 +41,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	}
 
 	public void nextCycle(Node node, int protocolId) {
-		// (TODO) reenable this.swr.periodicCall();
+		this.swr.periodicCall();
 	}
 
 	public void processEvent(Node node, int protocolId, Object message) {
@@ -51,9 +51,21 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		if (message instanceof MConnectTo) {
 			MConnectTo m = (MConnectTo) message;
 			assert (m.from == this.prcb.node);
-			this.swr.addRoute(m.mediator, m.to);
-			assert (this.prcb.openO(m.to)); // (TODO) send MRemoveRoute if
-											// already exists
+
+			if (m.mediator == null) {
+				// direct safe link already exist and just need to be inverted
+				assert (this.swr.isSafe(m.to));
+				this.swr.outview.addNeighbor(m.to);
+
+				SprayWithRouting other = ((WholePRCcast) node.getProtocol(WholePRCcast.PID)).swr;
+				if (!other.outview.contains(this.swr.node)) {
+					this.swr.inview.remove(m.to);
+				}
+			} else {
+				this.swr.addRoute(m.mediator, m.to);
+				assert (this.prcb.openO(m.to)); // (TODO) send MRemoveRoute if
+												// already exists
+			}
 
 		} else if (message instanceof MRemoveRoute) {
 			MRemoveRoute m = (MRemoveRoute) message;
