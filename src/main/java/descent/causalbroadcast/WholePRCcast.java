@@ -52,7 +52,8 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 			MConnectTo m = (MConnectTo) message;
 			assert (m.from == this.prcb.node);
 			this.swr.addRoute(m.mediator, m.to);
-			this.prcb.openO(m.to); // (TODO) send MRemoveRoute
+			assert (this.prcb.openO(m.to)); // (TODO) send MRemoveRoute if
+											// already exists
 
 		} else if (message instanceof MRemoveRoute) {
 			MRemoveRoute m = (MRemoveRoute) message;
@@ -88,7 +89,6 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 					this.swr.sendBeta(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MPi) {
 					this.swr.sendPi(imcm.getFrom(), imcm.getTo());
-					this.swr.removeRouteAsMediator(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MRho) {
 					this.swr.sendRho(imcm.getFrom(), imcm.getTo());
 					this.swr.removeRouteAsMediator(imcm.getFrom(), imcm.getTo());

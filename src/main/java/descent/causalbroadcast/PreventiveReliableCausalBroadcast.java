@@ -182,7 +182,9 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 			}
 		}
 
-		assert (!this.irs.isSafe(origin));
+		// from -> to is already safe when rho is received
+		// to -> from becomes safe here
+		assert ((this.node == from && this.irs.isSafe(to)) || (this.node == to && !this.irs.isSafe(origin)));
 
 		// #1 filter useless messages of buffer
 		bufferBeta.removeAll(this.buffersAlpha.get(origin)); // potential
@@ -201,7 +203,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		this.clean(origin);
 
 		// #4 add to inview
-		if (this.node == to) {
+		if (this.node == to && PreventiveReliableCausalBroadcast.TYPE == EArcType.BIDIRECTIONAL) {
 			this.irs.addToInView(origin);
 		}
 	}

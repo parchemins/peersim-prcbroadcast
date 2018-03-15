@@ -218,8 +218,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void removeRouteAsMediator(Node from, Node to) {
-		assert(this.inUse.remove(from, 1));
-		assert(this.inUse.remove(to, 1));
+		assert (this.inUse.remove(from, 1));
+		assert (this.inUse.remove(to, 1));
 	}
 
 	public void removeRouteAsEndProcess(Node mediator, Node to) {
@@ -273,9 +273,9 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		} else if ((this.inview.contains(target) || this.outview.contains(target) || this.inUse.contains(target))
 				&& this.isSafe(target)) {
 			this._send(target, m); // forward
-			if (m instanceof MRho || m instanceof MPi) {
-				this.inUse.remove(target, 1);
-			}
+			// if (m instanceof MRho || m instanceof MPi) {
+			// this.inUse.remove(target, 1);
+			// }
 		}
 	}
 
@@ -318,7 +318,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _sendUnsafe(Node to, Object m) {
-		assert (this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to));
+		// ugly assert, still assert
+		SprayWithRouting futureNeighbor = ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
+		assert (this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to)
+				|| futureNeighbor.outview.contains(this.node));
 
 		((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).send(this.node, to, m,
 				WholePRCcast.PID);
