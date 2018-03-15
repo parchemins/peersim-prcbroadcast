@@ -70,7 +70,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 * @param to
 	 *            The new neighbor.
 	 */
-	public void openO(Node to) {
+	public boolean openO(Node to) {
 		boolean isNew = this.irs.addToOutView(to);
 		// not (already safe or being safety checked)
 		if (isNew) {
@@ -81,6 +81,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 			// start safety check communication pattern
 			this.irs.sendAlpha(this.node, to);
 		}
+		return isNew;
 	}
 
 	/**

@@ -2,11 +2,11 @@
 SIZE 1000
 
 # parameters of periodic execution
-CYCLES 500
+CYCLES 3
 CYCLE 60000
 
-MIN_DELAY 10
-MAX_DELAY 10
+MIN_DELAY 50
+MAX_DELAY 50
 
 SHUFFLE_PERIOD CYCLE
 NB_MESSAGES_PER_SEC 0
@@ -55,12 +55,11 @@ control.0.protocol prc
 control.0.FINAL
 control.0.step CYCLE
 
-# control.1 descent.observers.structure.Observer
-# control.1.program descent.observers.PBuffers
-# control.1.protocol rps
-# control.1.meow cb
-# control.1.FINAL
-# control.1.step CYCLE/60
-# control.1.from 25*CYCLE
+control.1 descent.observers.structure.Observer
+control.1.program descent.observers.PLocalSpace
+control.1.protocol prc
+control.1.FINAL
+control.1.step CYCLE/60
+control.1.from 100
 
 

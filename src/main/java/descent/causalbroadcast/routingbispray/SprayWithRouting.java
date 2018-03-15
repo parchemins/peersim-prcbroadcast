@@ -162,7 +162,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		} else {
 			// #2 share the subscription to neighbors
 			for (Node neighbor : safeNeighbors) {
-				this._send(neighbor, new MConnectTo(neighbor, origin, this.node));
+				this.sendMConnectTo(neighbor, origin, new MConnectTo(neighbor, origin, this.node));
 			}
 		}
 	}
@@ -218,8 +218,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void removeRouteAsMediator(Node from, Node to) {
-		this.inUse.remove(from, 1);
-		this.inUse.remove(to, 1);
+		assert(this.inUse.remove(from, 1));
+		assert(this.inUse.remove(to, 1));
 	}
 
 	public void removeRouteAsEndProcess(Node mediator, Node to) {
@@ -230,10 +230,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
 		// #1 mark nodes as currently used
-		if (to != this.node) {
-			this.inUse.add(from);
-			this.inUse.add(to);
-		}
+		// if (to != this.node) {
+		this.inUse.add(from);
+		this.inUse.add(to);
+		// }
 		// #2 send the message
 		this._sendControlMessage(from, new MConnectTo(from, to, this.node), "connect to");
 	}
@@ -269,7 +269,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 		if (this.routes.hasRoute(target)) {
 			this._send(this.routes.getRoute(target), m); // route
-			
+
 		} else if ((this.inview.contains(target) || this.outview.contains(target) || this.inUse.contains(target))
 				&& this.isSafe(target)) {
 			this._send(target, m); // forward
@@ -372,13 +372,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public Iterable<Node> getAliveNeighbors() {
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.outview.getPeers())
-			if (n.isUp())
+			if (n.isUp() && this.isSafe(n))
 				result.add(n);
 
 		for (Node n : this.inview)
 			if (n.isUp())
 				result.add(n);
-		// System.out.println(this.outview.size() + " -- " + this.inview.size());
+		// System.out.println(this.outview.size() + " -- " +
+		// this.inview.size());
 		return result;
 	}
 
