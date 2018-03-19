@@ -188,24 +188,35 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// (TODO)
 	}
 
-	/**
-	 * A neighbor in our in-view just left. Remove the occurrences in our local
-	 * structure.
-	 * 
-	 * @param leaver
-	 *            The leaver identity.
-	 */
-	private void _closeI(Node leaver) {
-		// (TODO) (XXX)
-		this.inview.remove(leaver);
-		this.prcb.closeI(leaver);
-		this._removeAllRoutes(leaver); // (TODO)
-	}
-
 	@Override
 	public boolean addNeighbor(Node peer) {
-		// TODO Auto-generated method stub
-		return false;
+		boolean alreadyContained = this.outview.contains(peer);
+		SprayWithRouting other = ((WholePRCcast) peer.getProtocol(WholePRCcast.PID)).swr;
+
+		// #1 quick consistency check
+		assert ((alreadyContained && other.inview.contains(this.node))
+				|| (!alreadyContained && !other.inview.contains(this.node)));
+
+		// #2 add in both directions
+		this.outview.addNeighbor(peer);
+		other.inview.add(this.node);
+
+		return alreadyContained;
+	}
+
+	public boolean removeNeighbor(Node peer) {
+		boolean contained = this.outview.contains(peer);
+		SprayWithRouting other = ((WholePRCcast) peer.getProtocol(WholePRCcast.PID)).swr;
+
+		// #1 quick check
+		assert (contained);
+		assert ((contained && other.inview.contains(this.node)) || (!contained && !other.inview.contains(this.node)));
+		// #2 remove from outview and corresponding inview if need be
+		this.outview.removeNeighbor(peer);
+		if (!this.outview.contains(peer)) {
+			other.inview.remove(this.node);
+		}
+		return contained;
 	}
 
 	// ROUTING:

@@ -53,21 +53,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 			assert (m.from == this.prcb.node);
 
 			this.swr.addRoute(m.from, m.mediator, m.to);
-
-			// if (m.isDirect()) {
-			// #A direct safe link already exist and just need to invert
-			// assert (this.swr.isSafe(m.to));
-			// System.out.println("A");
-			// this.swr.outview.addNeighbor(m.to);
-
-			// SprayWithRouting other = ((WholePRCcast)
-			// node.getProtocol(WholePRCcast.PID)).swr;
-			// if (!other.outview.contains(this.swr.node)) {
-			// this.swr.inview.remove(m.to);
-			// }
-			// } else {
-			// #B full process of safety
-			System.out.println("B");
+			
 			assert (this.prcb.openO(m.to));
 			// }
 
