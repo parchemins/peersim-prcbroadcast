@@ -78,11 +78,19 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		if (isNew) {
 			// brand new link
 			this.unsafe.add(to);
+			if (this.irs.isSafe(to)) {
+				// #1 already among safe links, e.g. inview
+				this.unsafe.remove(to);
+				SprayWithRouting other = ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
+				other.inview.add(this.node);
+			} else {
+				// SprayWithRouting meow = (SprayWithRouting) this.irs;
+				// System.out.println(meow.inview.contains(to));
+				// assert (!this.irs.isSafe(to));
 
-			assert (!this.irs.isSafe(to));
-
-			// start safety check communication pattern
-			this.irs.sendAlpha(this.node, to);
+				// start safety check communication pattern
+				this.irs.sendAlpha(this.node, to);
+			}
 		}
 		return true;
 	}
@@ -96,6 +104,15 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 *            to = this.node
 	 */
 	public void receiveAlpha(Node from, Node to) {
+		SprayWithRouting meow = (SprayWithRouting) this.irs;
+		System.out.println(meow.inview.contains(from));
+		SprayWithRouting other = ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
+		System.out.println(other.isSafe(this.node));
+		
+		System.out.println(meow.outview.contains(from));
+		System.out.println(meow.routes.inUse().contains(from));
+		System.out.println("alpha " + from.getID() + "; " + to.getID());
+		System.out.println();
 		assert (!this.irs.isSafe(from));
 
 		this.unsafe.add(from);

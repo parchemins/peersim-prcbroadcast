@@ -64,15 +64,22 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			// #3 lock links for routing purpose and #4 send connection messages
 			for (Node neighbor : sample) {
 				System.out.println("@" + this.node.getID() + " orders " + q.getID() + " -> " + neighbor.getID());
+
+				SprayWithRouting other = ((WholePRCcast) q.getProtocol(WholePRCcast.PID)).swr;
+
 				if (neighbor != this.node) {
-					assert (neighbor != q);
-					this.outview.removeNeighbor(neighbor);
 					this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
+					this.outview.removeNeighbor(neighbor);
+					if (!this.outview.contains(neighbor)){
+						other.inview.remove(this.node);
+					}
 				} else {
 					this.outview.removeNeighbor(q);
 					this.inview.add(q);
-					SprayWithRouting other = ((WholePRCcast) q.getProtocol(WholePRCcast.PID)).swr;
 					other.outview.addNeighbor(this.node);
+					if (!this.outview.contains(neighbor)){
+						other.inview.remove(this.node);
+					}
 					// this.sendMConnectTo(q, this.node, new MConnectTo(q,
 					// this.node, null));
 				}
@@ -85,7 +92,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		Integer age = 0;
 		ArrayList<Node> possibleOldest = new ArrayList<Node>();
 		for (Node neighbor : this.outview.getPeers()) {
-			if (!this.routes.inUse().contains(neighbor) && this.isSafe(neighbor)) {
+			if (!this.routes.inUse().contains(neighbor) && this.isSafe(neighbor)
+					&& !this.prcb.buffersAlpha.containsKey(neighbor)) {
 				if (age < this.outview.ages.get(neighbor)) {
 					age = this.outview.ages.get(neighbor);
 					possibleOldest = new ArrayList<Node>();
@@ -112,7 +120,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 		// #B discard currently used links and unsafe links
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
-			if (this.routes.inUse().contains(neighbor) || !this.isSafe(neighbor)) {
+			if (this.routes.inUse().contains(neighbor) || !this.isSafe(neighbor)
+					|| this.prcb.buffersAlpha.containsKey(neighbor)) {
 				clone.remove(neighbor);
 			}
 		}
@@ -142,6 +151,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this._clear();
 		this._setNode(joiner);
 		if (contact != null) {
+			System.out.println("JOIN @ " + joiner.getID() + " -> " + contact.getID());
+
 			SprayWithRouting swr = ((WholePRCcast) contact.getProtocol(WholePRCcast.PID)).swr;
 			// #1 the very first connection is safe
 			this.outview.addNeighbor(contact);
@@ -167,6 +178,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		} else {
 			// #2 share the subscription to neighbors
 			for (Node neighbor : safeNeighbors) {
+				System.out.println("FWD @" + this.node.getID() + " -> " + neighbor.getID());
 				this.sendMConnectTo(neighbor, origin, new MConnectTo(neighbor, origin, this.node));
 			}
 		}
