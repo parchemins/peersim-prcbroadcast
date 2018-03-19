@@ -35,4 +35,6 @@ public interface IRoutingService {
 	public boolean addToOutView(Node neighbor);
 
 	public boolean isSafe(Node neighbor);
+
+	public void sendMRemoveRoute(Node dest);
 }

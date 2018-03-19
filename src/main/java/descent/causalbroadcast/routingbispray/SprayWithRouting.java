@@ -120,7 +120,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		while (sample.size() < sampleSize && clone.size() > 0) {
 			ArrayList<Node> ugly = new ArrayList<Node>(clone.uniqueSet());
 			Node neighbor = ugly.get(CommonState.r.nextInt(ugly.size()));
-			System.out.println("t " + this.node.getID() + "q " + q.getID() + ";n " + neighbor.getID());
 			if (neighbor == q) {
 				sample.add(this.node);
 			} else {
@@ -128,7 +127,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			}
 			clone.remove(neighbor, 1);
 		}
-		
+
 		return sample;
 	}
 
@@ -233,6 +232,13 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	// CONTROL MESSAGES:
 
 	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
+		System.out.println("====");
+		System.out.println("m.from " + from.getID() + "; ");
+		if (m.mediator != null) {
+			System.out.println("m.media " + m.mediator.getID());
+		}
+		System.out.println("m.to " + m.to.getID());
+		System.out.println("====");
 		// #1 mark nodes as currently used
 		if (to != this.node) {
 			this.inUse.add(from);
@@ -416,5 +422,12 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.outview.addNeighbor(neighbor);
 		return notAlreadyExists;
 
+	}
+
+	public void sendMRemoveRoute(Node to) {
+		assert (this.routes.hasRoute(to));
+		Node mediator = this.routes.getRoute(to);
+		this.removeRouteAsEndProcess(mediator, to);
+		this._sendUnsafe(mediator, new MRemoveRoute(this.node, mediator, to));
 	}
 }

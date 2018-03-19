@@ -50,6 +50,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		// Give the message to the proper sub-protocol
 		if (message instanceof MConnectTo) {
 			MConnectTo m = (MConnectTo) message;
+			System.out.println("this . from " + m.from.getID() + "  + +  this" + this.prcb.node.getID());
 			assert (m.from == this.prcb.node);
 
 			if (m.mediator == null) {

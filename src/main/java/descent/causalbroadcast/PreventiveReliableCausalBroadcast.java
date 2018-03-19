@@ -73,23 +73,29 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 */
 	public boolean openO(Node to) {
 		boolean alreadySafe = this.irs.isSafe(to);
-		System.out.println("already safe " + alreadySafe);
 		boolean isNew = this.irs.addToOutView(to);
 		// not (already safe or being safety checked)
-		if (isNew) {
+		if (isNew && !alreadySafe) {
+			// brand new link
 			this.unsafe.add(to);
-
-			System.out.println("openO " + this.node.getID() + "; to " + to.getID());
-			System.out.println("THIS " +((SprayWithRouting) this.irs).inview.contains(to));
-			System.out.println("OTHER "+ 
-					((SprayWithRouting) ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr).isSafe(to));
 
 			assert (!this.irs.isSafe(to));
 
 			// start safety check communication pattern
 			this.irs.sendAlpha(this.node, to);
+		} else if (isNew && alreadySafe) {
+			// already in inview and safe
+			SprayWithRouting other = (SprayWithRouting) ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
+			assert (other.isSafe(this.node));
+			other.addToInView(this.node);
+			this.irs.sendMRemoveRoute(to);
+		} else if (!isNew && !alreadySafe) {
+			// already being safety checked
+			assert (((SprayWithRouting) ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).swr).outview
+					.contains(to));
+			this.irs.sendMRemoveRoute(to);
 		}
-		return isNew;
+		return isNew || alreadySafe || (!alreadySafe && !isNew);
 	}
 
 	/**
@@ -158,7 +164,6 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 		if (PreventiveReliableCausalBroadcast.TYPE == EArcType.BIDIRECTIONAL) {
 			// #A continue protocol
 			this.receiptsOfPi.put(to, true);
-			System.out.println("B");
 			this.irs.sendBuffer(to, from, to, this.buffersAlpha.get(to));
 			// safe "from"->"to", not safe on receipt : no clean yet
 			this.unsafe.remove(to);
@@ -187,8 +192,6 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 			origin = from;
 			if (PreventiveReliableCausalBroadcast.TYPE == EArcType.BIDIRECTIONAL) {
 				// last exchange for bidirectional safety
-				System.out.println("A");
-				System.out.println("@" + this.node.getID() + "; from " + from.getID() + "; to" + to.getID());
 				this.irs.sendBuffer(from, from, to, this.buffersPi.get(from));
 			}
 		}
