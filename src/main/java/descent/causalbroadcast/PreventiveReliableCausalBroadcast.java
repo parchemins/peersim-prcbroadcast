@@ -72,10 +72,10 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 	 *            The new neighbor.
 	 */
 	public boolean openO(Node to) {
-		boolean alreadySafe = this.irs.isSafe(to);
+		// boolean alreadySafe = this.irs.isSafe(to);
 		boolean isNew = this.irs.addToOutView(to);
 		// not (already safe or being safety checked)
-		if (isNew && !alreadySafe) {
+		if (isNew) {
 			// brand new link
 			this.unsafe.add(to);
 
@@ -83,19 +83,8 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 
 			// start safety check communication pattern
 			this.irs.sendAlpha(this.node, to);
-		} else if (isNew && alreadySafe) {
-			// already in inview and safe
-			SprayWithRouting other = (SprayWithRouting) ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
-			assert (other.isSafe(this.node));
-			other.addToInView(this.node);
-			this.irs.sendMRemoveRoute(to);
-		} else if (!isNew && !alreadySafe) {
-			// already being safety checked
-			assert (((SprayWithRouting) ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).swr).outview
-					.contains(to));
-			this.irs.sendMRemoveRoute(to);
 		}
-		return isNew || alreadySafe || (!alreadySafe && !isNew);
+		return true;
 	}
 
 	/**
@@ -218,6 +207,7 @@ public class PreventiveReliableCausalBroadcast implements EDProtocol, CDProtocol
 
 		// #4 add to inview
 		if (this.node == to && PreventiveReliableCausalBroadcast.TYPE == EArcType.BIDIRECTIONAL) {
+			System.out.println("@node " + this.node.getID() + ";  addtoinview " + origin.getID());
 			this.irs.addToInView(origin);
 		}
 	}

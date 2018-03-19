@@ -22,22 +22,18 @@ public class PLocalSpace implements IObserverProgram {
 		ArrayList<Double> unsafe = new ArrayList<Double>();
 
 		ArrayList<Double> routes = new ArrayList<Double>();
-		ArrayList<Double> inUse = new ArrayList<Double>();
 
 		for (Node n : CDynamicNetwork.networks.get(0)) {
 			PreventiveReliableCausalBroadcast prcb = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).prcb;
 			SprayWithRouting swr = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).swr;
 
 			unsafe.add((double) prcb.unsafe.size());
-			routes.add((double) swr.routes.toVia.size());
-			inUse.add((double) swr.inUse.size());
+			routes.add((double) swr.routes.inUse().size());
 		}
 
 		Stats sUnsafe = Stats.getFromSmall(unsafe);
 		Stats sRoutes = Stats.getFromSmall(routes);
-		Stats sInUse = Stats.getFromSmall(inUse);
-
-		System.out.println("PLS. " + sUnsafe.mean + " " + sRoutes.mean + " " + sInUse.mean);
+		System.out.println("PLS. " + sUnsafe.mean + " " + sRoutes.mean);
 	}
 
 	public void onLastTick(DictGraph observer) {

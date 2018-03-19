@@ -12,11 +12,11 @@ import peersim.core.Node;
  */
 public class Routes {
 
-	public HashMap<Node, Route> routes;
-
 	public Node node;
 
 	public Integer retainingTime = 10000; // (TODO configurable)
+
+	public HashMap<Node, Route> routes;
 
 	public Routes() {
 		this.routes = new HashMap<Node, Route>();
@@ -27,19 +27,24 @@ public class Routes {
 	}
 
 	public void addRoute(Node from, Node mediator, Node to) {
-		if (this.node == mediator) {
+		this.upKeep();
+
+		if (mediator == null && this.node == from) {
+			this.routes.put(to, new Route(null, to));
+		} else if (mediator == null && this.node == to) {
+			this.routes.put(from, new Route(null, from));
+		} else if (this.node == mediator) {
 			this.routes.put(from, new Route(null, from));
 			this.routes.put(to, new Route(null, to));
 		} else if (this.node == from) {
-			this.routes.put(mediator, new Route(mediator, to));
+			this.routes.put(to, new Route(mediator, to));
 		} else if (this.node == to) {
-			this.routes.put(mediator, new Route(mediator, from));
+			this.routes.put(from, new Route(mediator, from));
 		}
-		upKeep();
 	}
 
 	private void upKeep() {
-		for (Node n : this.routes.keySet()) {
+		for (Node n : new HashSet<Node>(routes.keySet())) {
 			Route r = this.routes.get(n);
 			if (r.timestamp < CommonState.getIntTime() - this.retainingTime) {
 				this.routes.remove(n);
@@ -48,7 +53,10 @@ public class Routes {
 	}
 
 	public Node getRoute(Node to) {
+		this.upKeep();
+
 		assert (this.hasRoute(to));
+
 		Route r = this.routes.get(to);
 		if (r.isUsingMediator()) {
 			return r.mediator; // forward
@@ -58,7 +66,16 @@ public class Routes {
 	}
 
 	public Set<Node> inUse() {
-		return new HashSet<Node>(this.routes.keySet());
+		this.upKeep();
+		HashSet<Node> result = new HashSet<Node>();
+		for (Node n : this.routes.keySet()) {
+			if (this.routes.get(n).mediator != null) {
+				result.add(this.routes.get(n).mediator);
+			} else {
+				result.add(n);
+			}
+		}
+		return result;
 	}
 
 	public boolean hasRoute(Node to) {

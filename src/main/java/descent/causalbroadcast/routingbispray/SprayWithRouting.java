@@ -36,8 +36,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public SprayPartialView outview; // In charge of this range of links
 	public HashSet<Node> inview; // Other used links but cannot modify
 
-	public HashBag<Node> inUse; // outview -> # control messages before removal
-
 	////////////////////////////////////////////////////////////////////////////
 
 	public SprayWithRouting(PreventiveReliableCausalBroadcast prcb) {
@@ -47,8 +45,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 		this.outview = new SprayPartialView();
 		this.inview = new HashSet<Node>();
-
-		this.inUse = new HashBag<Node>();
 	}
 
 	// PEER-SAMPLING:
@@ -57,6 +53,9 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #1 select a neighbor to exchange with
 		Node q = this._getOldest();
 		if (q != null) {
+
+			System.out.println("OLDEST " + q.getID());
+
 			// #2 prepare a sample
 			HashBag<Node> sample = this._getSample(q);
 
@@ -72,7 +71,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 				} else {
 					this.outview.removeNeighbor(q);
 					this.inview.add(q);
-					this.sendMConnectTo(q, this.node, new MConnectTo(q, this.node, null));
+					SprayWithRouting other = ((WholePRCcast) q.getProtocol(WholePRCcast.PID)).swr;
+					other.outview.addNeighbor(this.node);
+					// this.sendMConnectTo(q, this.node, new MConnectTo(q,
+					// this.node, null));
 				}
 
 			}
@@ -83,7 +85,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		Integer age = 0;
 		ArrayList<Node> possibleOldest = new ArrayList<Node>();
 		for (Node neighbor : this.outview.getPeers()) {
-			if (!this.inUse.contains(neighbor) && this.isSafe(neighbor)) {
+			if (!this.routes.inUse().contains(neighbor) && this.isSafe(neighbor)) {
 				if (age < this.outview.ages.get(neighbor)) {
 					age = this.outview.ages.get(neighbor);
 					possibleOldest = new ArrayList<Node>();
@@ -110,7 +112,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 		// #B discard currently used links and unsafe links
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
-			if (this.inUse.contains(neighbor) || !this.isSafe(neighbor)) {
+			if (this.routes.inUse().contains(neighbor) || !this.isSafe(neighbor)) {
 				clone.remove(neighbor);
 			}
 		}
@@ -171,17 +173,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void leave() {
-		// (TODO) (XXX)
-		// #0 Goes down.
-		// this.isUp = false;
-		// #1 Immediately remove in the in-views.
-		/*
-		 * for (Node neighbor : this.outview.getPeers()) { SprayWithRouting swr
-		 * = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).swr;
-		 * swr._closeI(this.node);
-		 * 
-		 * }
-		 */
+		// (TODO)
 	}
 
 	/**
@@ -216,34 +208,21 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// (TODO)
 	}
 
-	public void addRoute(Node mediator, Node to) {
-		this.routes.addRoute(to, mediator);
-	}
-
-	public void removeRouteAsMediator(Node from, Node to) {
-		assert (this.inUse.remove(from, 1));
-		assert (this.inUse.remove(to, 1));
-	}
-
-	public void removeRouteAsEndProcess(Node mediator, Node to) {
-		this.routes.removeRoute(to, mediator);
+	public void addRoute(Node from, Node mediator, Node to) {
+		this.routes.addRoute(from, mediator, to);
 	}
 
 	// CONTROL MESSAGES:
 
 	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
-		System.out.println("====");
-		System.out.println("m.from " + from.getID() + "; ");
-		if (m.mediator != null) {
-			System.out.println("m.media " + m.mediator.getID());
-		}
-		System.out.println("m.to " + m.to.getID());
-		System.out.println("====");
+		/*
+		 * System.out.println("===="); System.out.println("m.from " +
+		 * from.getID() + "; "); if (m.mediator != null) { System.out.println(
+		 * "m.media " + m.mediator.getID()); } System.out.println("m.to " +
+		 * m.to.getID()); System.out.println("====");
+		 */
 		// #1 mark nodes as currently used
-		if (to != this.node) {
-			this.inUse.add(from);
-			this.inUse.add(to);
-		}
+		this.addRoute(from, this.node, to);
 		// #2 send the message
 		this._sendControlMessage(from, m, "connect to");
 	}
@@ -325,7 +304,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	private void _sendUnsafe(Node to, Object m) {
 		// ugly assert, still assert
 		SprayWithRouting futureNeighbor = ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
-		assert (this.outview.contains(to) || this.inview.contains(to) || this.inUse.contains(to)
+		assert (this.outview.contains(to) || this.inview.contains(to) || this.routes.hasRoute(to)
 				|| futureNeighbor.outview.contains(this.node));
 
 		((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).send(this.node, to, m,
@@ -357,7 +336,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			if (this.isSafe(n))
 				result.add(n);
 		}
-		for (Node n : this.inUse) {
+		for (Node n : this.routes.inUse()) {
 			// inuse should not have unsafe links
 			assert (!this.prcb.isUnsafe(n));
 			result.add(n);
@@ -403,7 +382,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public boolean isSafe(Node process) {
 		return (this.outview.contains(process) && !this.prcb.unsafe.contains(process)) || this.inview.contains(process)
-				|| this.inUse.contains(process);
+				|| this.routes.inUse().contains(process);
 	}
 
 	private void _clear() {
@@ -421,13 +400,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		boolean notAlreadyExists = !this.outview.contains(neighbor);
 		this.outview.addNeighbor(neighbor);
 		return notAlreadyExists;
-
 	}
 
-	public void sendMRemoveRoute(Node to) {
-		assert (this.routes.hasRoute(to));
-		Node mediator = this.routes.getRoute(to);
-		this.removeRouteAsEndProcess(mediator, to);
-		this._sendUnsafe(mediator, new MRemoveRoute(this.node, mediator, to));
-	}
 }

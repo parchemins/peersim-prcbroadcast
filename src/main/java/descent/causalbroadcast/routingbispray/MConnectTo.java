@@ -17,4 +17,8 @@ public class MConnectTo {
 		this.mediator = mediator;
 	}
 
+	public boolean isDirect() {
+		return this.mediator == null;
+	}
+
 }

@@ -26,15 +26,9 @@ public interface IRoutingService {
 
 	public HashSet<Node> getOutview();
 
-	public void removeRouteAsMediator(Node from, Node to);
-
-	public void removeRouteAsEndProcess(Node from, Node to);
-
 	public void addToInView(Node neighbor);
 
 	public boolean addToOutView(Node neighbor);
 
 	public boolean isSafe(Node neighbor);
-
-	public void sendMRemoveRoute(Node dest);
 }
