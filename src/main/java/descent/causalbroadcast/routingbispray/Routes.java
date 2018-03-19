@@ -1,48 +1,69 @@
 package descent.causalbroadcast.routingbispray;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
-import org.apache.commons.collections4.bag.HashBag;
-
+import peersim.core.CommonState;
 import peersim.core.Node;
 
 /**
- * Data structure that register routes.
+ * Data structure that register routes. It removes them over time if unused.
  */
 public class Routes {
 
-	public HashMap<Node, HashBag<Node>> toVia;
+	public HashMap<Node, Route> routes;
+
+	public Node node;
+
+	public Integer retainingTime = 10000; // (TODO configurable)
 
 	public Routes() {
-		this.toVia = new HashMap<Node, HashBag<Node>>();
+		this.routes = new HashMap<Node, Route>();
 	}
 
-	public void addRoute(Node to, Node mediator) {
-		if (!this.toVia.containsKey(to)) {
-			this.toVia.put(to, new HashBag<Node>());
+	public void setNode(Node node) {
+		this.node = node;
+	}
+
+	public void addRoute(Node from, Node mediator, Node to) {
+		if (this.node == mediator) {
+			this.routes.put(from, new Route(null, from));
+			this.routes.put(to, new Route(null, to));
+		} else if (this.node == from) {
+			this.routes.put(mediator, new Route(mediator, to));
+		} else if (this.node == to) {
+			this.routes.put(mediator, new Route(mediator, from));
 		}
-		this.toVia.get(to).add(mediator);
+		upKeep();
 	}
 
-	public void removeRoute(Node to, Node via) {
-		assert (this.toVia.containsKey(to));
-		assert (this.toVia.get(to).contains(via));
-
-		this.toVia.get(to).remove(via, 1);
-		if (this.toVia.get(to).isEmpty()) {
-			this.toVia.remove(to);
+	private void upKeep() {
+		for (Node n : this.routes.keySet()) {
+			Route r = this.routes.get(n);
+			if (r.timestamp < CommonState.getIntTime() - this.retainingTime) {
+				this.routes.remove(n);
+			}
 		}
 	}
 
 	public Node getRoute(Node to) {
-		assert (this.toVia.containsKey(to));
-		assert (!this.toVia.get(to).isEmpty());
+		assert (this.hasRoute(to));
+		Route r = this.routes.get(to);
+		if (r.isUsingMediator()) {
+			return r.mediator; // forward
+		} else {
+			return to; // direct
+		}
+	}
 
-		return this.toVia.get(to).iterator().next();
+	public Set<Node> inUse() {
+		return new HashSet<Node>(this.routes.keySet());
 	}
 
 	public boolean hasRoute(Node to) {
-		return this.toVia.containsKey(to) && !this.toVia.get(to).isEmpty();
+		this.upKeep();
+		return this.routes.containsKey(to);
 	}
 
 }
