@@ -70,14 +70,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 				if (neighbor != this.node) {
 					this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
 					this.outview.removeNeighbor(neighbor);
-					if (!this.outview.contains(neighbor)){
+					if (!this.outview.contains(neighbor)) {
 						other.inview.remove(this.node);
 					}
 				} else {
 					this.outview.removeNeighbor(q);
 					this.inview.add(q);
 					other.outview.addNeighbor(this.node);
-					if (!this.outview.contains(neighbor)){
+					if (!this.outview.contains(neighbor)) {
 						other.inview.remove(this.node);
 					}
 					// this.sendMConnectTo(q, this.node, new MConnectTo(q,
