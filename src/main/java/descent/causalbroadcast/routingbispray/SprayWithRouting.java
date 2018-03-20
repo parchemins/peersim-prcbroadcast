@@ -157,8 +157,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 			SprayWithRouting swr = ((WholePRCcast) contact.getProtocol(WholePRCcast.PID)).swr;
 			// #1 the very first connection is safe
-			this.outview.addNeighbor(contact);
-			swr.inview.add(this.node);
+			this.addNeighborSafe(contact);
 			// #2 subsequent ones might not be
 			swr.onSubscription(joiner);
 		}
@@ -168,15 +167,13 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public void onSubscription(Node origin) {
 		HashBag<Node> safeNeighbors = new HashBag<Node>();
 		for (Node neighbor : this.outview.getPeers()) {
-			if (this.isSafe(neighbor)) {
+			if (this.prcb.isSafe(neighbor)) {
 				safeNeighbors.add(neighbor);
 			}
 		}
 		if (safeNeighbors.isEmpty()) {
 			// #1 keep the subscription for ourself
-			SprayWithRouting swr = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
-			this.outview.addNeighbor(origin);
-			swr.inview.add(this.node);
+			this.addNeighborSafe(this.node);
 		} else {
 			// #2 share the subscription to neighbors
 			for (Node neighbor : safeNeighbors) {
@@ -207,17 +204,39 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public boolean addNeighborSafe(Node peer) {
+		WholePRCcast other = (WholePRCcast) peer.getProtocol(WholePRCcast.PID);
 		boolean result = this.addNeighbor(peer);
-		this.prcb.open(peer, true);
+		assert (result);
+		this.prcb.open(peer, true); // from -- safe -> to
+		other.prcb.open(this.node, true); // to -- safe -> from
 		return result; // (TODO) maybe more meaningful return value
 	}
 
 	public boolean addNeighborUnsafe(Node peer) {
-		boolean result = this.addNeighbor(peer);
-		if (result && this.prcb.isNotSafe(peer) && !this.prcb.isYetToBeSafe(peer)) {
+		WholePRCcast other = (WholePRCcast) peer.getProtocol(WholePRCcast.PID);
+		boolean isNew = this.addNeighbor(peer);
+		// last part of condition is a cheat to ensure that only one
+		// safety checking run at a time. Without it, the protocol is more
+		// complex to handle concurrent adds.
+		if (isNew && this.prcb.isNotSafe(peer) && !this.prcb.isYetToBeSafe(peer)
+				&& !other.prcb.isYetToBeSafe(this.node)) {
 			this.prcb.open(peer, false);
 		}
-		return result; // (TODO) maybe more meaningful return value
+		return isNew; // (TODO) maybe more meaningful return value
+	}
+
+	public boolean addNeighborTrySafeButIfNotFallbackToUnsafe(Node peer) {
+		WholePRCcast other = (WholePRCcast) peer.getProtocol(WholePRCcast.PID);
+		boolean isNew = this.addNeighbor(peer);
+		if (isNew) {
+			// ensure that no concurrent adds are performed
+			if (this.prcb.isNotSafe(peer) && !this.prcb.isYetToBeSafe(peer) && !other.prcb.isYetToBeSafe(this.node)) {
+				this.prcb.open(peer, true);
+			} else {
+				// let the safety check run
+			}
+		}
+		return isNew; // (TODO) maybe more meaningful return value
 	}
 
 	public boolean removeNeighbor(Node peer) {
@@ -235,35 +254,28 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		return contained;
 	}
 
-	// ROUTING:
-
-	/**
-	 * Remove all routes coming from a node
-	 * 
-	 * @param toRemove
-	 *            The node to remove from routing tables.
-	 */
-	private void _removeAllRoutes(Node toRemove) {
-		// (TODO)
-	}
-
-	public void addRoute(Node from, Node mediator, Node to) {
-		this.routes.addRoute(from, mediator, to);
-	}
-
 	// CONTROL MESSAGES:
 
 	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
-		/*
-		 * System.out.println("===="); System.out.println("m.from " +
-		 * from.getID() + "; "); if (m.mediator != null) { System.out.println(
-		 * "m.media " + m.mediator.getID()); } System.out.println("m.to " +
-		 * m.to.getID()); System.out.println("====");
-		 */
 		// #1 mark nodes as currently used
-		this.addRoute(from, this.node, to);
+		this.routes.addRoute(from, this.node, to);
 		// #2 send the message
 		this._sendControlMessage(from, m, "connect to");
+	}
+
+	public void receiveMConnectTo(Node from, Node mediator, Node to) {
+		this.routes.addRoute(from, mediator, to);
+
+		if (mediator == null) {
+			this.addNeighborTrySafeButIfNotFallbackToUnsafe(to);
+		} else {
+			this.addNeighborUnsafe(to);
+		}
+	}
+
+	// (receive alpha)
+	public void receiveMConnectFrom(Node from, Node mediator, Node to) {
+		this.routes.addRoute(from, mediator, to);
 	}
 
 	// from: process A; to: process B; A -> alpha -> B
@@ -291,8 +303,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	private void _sendControlMessage(Node target, Object m, String info) {
-		boolean route = this.routes.hasRoute(target) && this.isSafe(this.routes.getRoute(target));
-		boolean direct = this.isSafe(target);
+		boolean route = this.routes.hasRoute(target) && this.prcb.isSafe(this.routes.getRoute(target));
+		boolean direct = this.prcb.isSafe(target);
 
 		assert (route || direct); // no route nor forward
 
@@ -314,7 +326,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 
 		// #1 check if there is an issue with algo
-		assert (!this.isSafe(receiver)); // was safe already
+		assert (!this.prcb.isSafe(receiver)); // was safe already
 
 		// #2 send the buffer
 		this._sendUnsafe(receiver, new MBuffer(from, to, sender, receiver, buffer));
@@ -327,11 +339,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _send(Node to, Object m) {
-		assert (this.isSafe(to));
+		assert (this.prcb.isSafe(to));
 
 		((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).send(this.node, to, m,
 				WholePRCcast.PID);
-
 	}
 
 	/**
@@ -368,16 +379,16 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// since bidirectionnal, outview includes inview
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.outview.getPeers()) {
-			if (this.isSafe(n))
+			if (this.prcb.isSafe(n))
 				result.add(n);
 		}
 		for (Node n : this.inview) {
-			if (this.isSafe(n))
+			if (this.prcb.isSafe(n))
 				result.add(n);
 		}
 		for (Node n : this.routes.inUse()) {
 			// inuse should not have unsafe links
-			assert (!this.prcb.isNotSafe(n));
+			assert (this.prcb.isSafe(n));
 			result.add(n);
 		}
 		return result;
@@ -399,9 +410,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public Iterable<Node> getAliveNeighbors() {
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.outview.getPeers())
-			if (n.isUp() && this.isSafe(n)) // (TODO) inUse included?
+			if (n.isUp() && this.prcb.isSafe(n)) // (TODO) inUse included?
 				result.add(n);
-
 		for (Node n : this.inview)
 			if (n.isUp())
 				result.add(n);

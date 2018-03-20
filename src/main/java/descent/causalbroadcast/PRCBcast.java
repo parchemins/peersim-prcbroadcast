@@ -72,11 +72,6 @@ public class PRCBcast implements IPRCB {
 		}
 	}
 
-	public void openI(Node to) {
-		// TODO Auto-generated method stub
-
-	}
-
 	public void close(Node to) {
 		// TODO Auto-generated method stub
 

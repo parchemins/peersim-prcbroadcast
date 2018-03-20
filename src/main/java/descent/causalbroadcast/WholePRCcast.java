@@ -40,7 +40,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	}
 
 	public void nextCycle(Node node, int protocolId) {
-		this.swr.periodicCall();
+		// this.swr.periodicCall();
 	}
 
 	public void processEvent(Node node, int protocolId, Object message) {
@@ -51,10 +51,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		if (message instanceof MConnectTo) {
 			MConnectTo m = (MConnectTo) message;
 			assert (m.from == this.prcb.node);
-
-			this.swr.addRoute(m.from, m.mediator, m.to);
-
-			this.swr.addNeighborUnsafe(m.to);
+			this.swr.receiveMConnectTo(m.from, m.mediator, m.to);
 
 		} else if (message instanceof IMControlMessage) {
 			IMControlMessage imcm = (IMControlMessage) message;
@@ -63,7 +60,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 				// receiver
 				if (message instanceof MAlpha) {
 					MAlpha m = (MAlpha) message;
-					this.swr.addRoute(m.from, m.mediator, m.to);
+					this.swr.receiveMConnectFrom(m.from, m.mediator, m.to);
 					this.prcb.receiveAlpha(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MBeta) {
 					this.prcb.receiveBeta(imcm.getFrom(), imcm.getTo());
