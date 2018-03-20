@@ -7,7 +7,6 @@ import java.util.List;
 import org.apache.commons.collections4.bag.HashBag;
 
 import descent.causalbroadcast.IPRCB;
-import descent.causalbroadcast.PRCBcast;
 import descent.causalbroadcast.WholePRCcast;
 import descent.causalbroadcast.messages.MAlpha;
 import descent.causalbroadcast.messages.MBeta;
@@ -54,9 +53,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #1 select a neighbor to exchange with
 		Node q = this._getOldest();
 		if (q != null) {
-
-			System.out.println("OLDEST " + q.getID());
-
 			// #2 prepare a sample
 			HashBag<Node> sample = this._getSample(q);
 
@@ -64,23 +60,22 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 			// #3 lock links for routing purpose and #4 send connection messages
 			for (Node neighbor : sample) {
-				System.out.println("@" + this.node.getID() + " orders " + q.getID() + " -> " + neighbor.getID());
+				// System.out.println("@" + this.node.getID() + " orders " +
+				// q.getID() + " -> " + neighbor.getID());
 
 				SprayWithRouting other = ((WholePRCcast) q.getProtocol(WholePRCcast.PID)).swr;
 
 				if (neighbor != this.node) {
 					this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
-					this.outview.removeNeighbor(neighbor);
-					if (!this.outview.contains(neighbor)) {
-						other.inview.remove(this.node);
-					}
+					this.removeNeighbor(neighbor);
 				} else {
-					this.outview.removeNeighbor(q);
-					this.inview.add(q);
-					other.outview.addNeighbor(this.node);
-					if (!this.outview.contains(neighbor)) {
-						other.inview.remove(this.node);
-					}
+					// this.outview.removeNeighbor(q);
+					// this.inview.add(q);
+					// other.outview.addNeighbor(this.node);
+					// if (!this.outview.contains(neighbor)) {
+					// other.inview.remove(this.node);
+					// }
+
 					// this.sendMConnectTo(q, this.node, new MConnectTo(q,
 					// this.node, null));
 				}
@@ -153,7 +148,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public void join(Node joiner, Node contact) {
 		this._setNode(joiner);
 		if (contact != null) {
-			System.out.println("JOIN @ " + joiner.getID() + " -> " + contact.getID());
+			// System.out.println("JOIN @ " + joiner.getID() + " -> " +
+			// contact.getID());
 
 			SprayWithRouting swr = ((WholePRCcast) contact.getProtocol(WholePRCcast.PID)).swr;
 			// #1 the very first connection is safe
@@ -173,11 +169,12 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 		if (safeNeighbors.isEmpty()) {
 			// #1 keep the subscription for ourself
-			this.addNeighborSafe(this.node);
+			this.addNeighbor(this.node);
 		} else {
 			// #2 share the subscription to neighbors
 			for (Node neighbor : safeNeighbors) {
-				System.out.println("FWD @" + this.node.getID() + " -> " + neighbor.getID());
+				// System.out.println("FWD @" + this.node.getID() + " -> " +
+				// neighbor.getID());
 				this.sendMConnectTo(neighbor, origin, new MConnectTo(neighbor, origin, this.node));
 			}
 		}
@@ -200,16 +197,16 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.outview.addNeighbor(peer);
 		other.inview.add(this.node);
 
-		return alreadyContained;
+		return !alreadyContained;
 	}
 
 	public boolean addNeighborSafe(Node peer) {
 		WholePRCcast other = (WholePRCcast) peer.getProtocol(WholePRCcast.PID);
-		boolean result = this.addNeighbor(peer);
-		assert (result);
+		boolean isNew = this.addNeighbor(peer);
+		assert (isNew);
 		this.prcb.open(peer, true); // from -- safe -> to
 		other.prcb.open(this.node, true); // to -- safe -> from
-		return result; // (TODO) maybe more meaningful return value
+		return isNew; // (TODO) maybe more meaningful return value
 	}
 
 	public boolean addNeighborUnsafe(Node peer) {
@@ -250,6 +247,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.outview.removeNeighbor(peer);
 		if (!this.outview.contains(peer)) {
 			other.inview.remove(this.node);
+
+			this.prcb.close(peer);
 		}
 		return contained;
 	}

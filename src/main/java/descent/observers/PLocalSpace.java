@@ -20,6 +20,7 @@ public class PLocalSpace implements IObserverProgram {
 
 	public void tick(long currentTick, DictGraph observer) {
 		ArrayList<Double> unsafe = new ArrayList<Double>();
+		ArrayList<Double> safe  = new ArrayList<Double>();
 
 		ArrayList<Double> routes = new ArrayList<Double>();
 
@@ -28,12 +29,15 @@ public class PLocalSpace implements IObserverProgram {
 			SprayWithRouting swr = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).swr;
 
 			unsafe.add((double) prcb.unsafe.size());
+			safe.add((double) prcb.safe.size());
+			
 			routes.add((double) swr.routes.inUse().size());
 		}
 
 		Stats sUnsafe = Stats.getFromSmall(unsafe);
 		Stats sRoutes = Stats.getFromSmall(routes);
-		System.out.println("PLS. " + sUnsafe.mean + " " + sRoutes.mean);
+		Stats sSafe = Stats.getFromSmall(safe);
+		System.out.println("PLS. " + sUnsafe.mean + "  "+ sSafe.mean + "  " + sRoutes.mean);
 	}
 
 	public void onLastTick(DictGraph observer) {

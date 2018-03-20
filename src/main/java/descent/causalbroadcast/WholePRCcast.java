@@ -40,7 +40,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	}
 
 	public void nextCycle(Node node, int protocolId) {
-		// this.swr.periodicCall();
+		this.swr.periodicCall();
 	}
 
 	public void processEvent(Node node, int protocolId, Object message) {
