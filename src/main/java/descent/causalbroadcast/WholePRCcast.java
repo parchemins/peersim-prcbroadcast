@@ -28,7 +28,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	public WholePRCcast(String prefix) {
 		WholePRCcast.PID = Configuration.getPid(prefix + "." + PAR_PID);
 
-		this.prcb = new PRCBcast(prefix);
+		this.prcb = new PRCBcast();
 		this.swr = new SprayWithRouting(this.prcb);
 		this.prcb.setIRS(this.swr);
 	}

@@ -9,9 +9,7 @@ import descent.causalbroadcast.messages.MRegularBroadcast;
 import descent.causalbroadcast.messages.MReliableBroadcast;
 import descent.causalbroadcast.routingbispray.IRoutingService;
 import descent.rps.IMessage;
-import peersim.cdsim.CDProtocol;
 import peersim.core.Node;
-import peersim.edsim.EDProtocol;
 
 /**
  * Preventive reliable causal broadcast. It sends control messages to remove the
@@ -20,7 +18,7 @@ import peersim.edsim.EDProtocol;
  * message. Message overhead is constant (same principle of pcbroadcast). Local
  * structure scales with network dynamicity and traffic (they vary over time).
  */
-public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
+public class PRCBcast implements IPRCB {
 
 	IRoutingService irs;
 
@@ -42,17 +40,6 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 
 	////////////////
 
-	public PRCBcast(String prefix) {
-		this.expected = new HashMap<Node, HashSet<MReliableBroadcast>>();
-
-		this.buffersAlpha = new HashMap<Node, ArrayList<MReliableBroadcast>>();
-		this.buffersPi = new HashMap<Node, ArrayList<MReliableBroadcast>>();
-		this.receiptsOfPi = new HashMap<Node, Boolean>();
-
-		this.unsafe = new HashSet<Node>();
-		this.safe = new HashSet<Node>();
-	}
-
 	public PRCBcast() {
 		this.expected = new HashMap<Node, HashSet<MReliableBroadcast>>();
 
@@ -73,7 +60,7 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 	 * @param to
 	 *            The new neighbor.
 	 */
-	public void openO(Node to, boolean bypassSafety) {
+	public void open(Node to, boolean bypassSafety) {
 		assert (!this.safe.contains(to) && !this.unsafe.contains(to));
 		if (bypassSafety) {
 			// #A peer-sampling knows the neighbor is safe by design
@@ -104,7 +91,7 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 	 *            to = this.node
 	 */
 	public void receiveAlpha(Node from, Node to) {
-		assert (!this.irs.isSafe(from));
+		assert (!this.safe.contains(from) && !this.unsafe.contains(from));
 
 		this.unsafe.add(from);
 
@@ -124,7 +111,7 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 	 *            The node we add in our out-view.
 	 */
 	public void receiveBeta(Node from, Node to) {
-		assert (!this.irs.isSafe(to));
+		assert (!this.safe.contains(to) && this.unsafe.contains(to));
 
 		this.buffersAlpha.put(to, new ArrayList<MReliableBroadcast>());
 		this.buffersPi.put(to, new ArrayList<MReliableBroadcast>());
@@ -141,7 +128,7 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 	 *            to = this.node
 	 */
 	public void receivePi(Node from, Node to) {
-		assert (!this.irs.isSafe(from));
+		assert (!this.safe.contains(from) && this.unsafe.contains(from));
 
 		this.receiptsOfPi.put(from, true);
 		this.irs.sendRho(from, to);
@@ -156,7 +143,7 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 	 *            The node that we add as neighbor.
 	 */
 	public void receiveRho(Node from, Node to) {
-		assert (!this.irs.isSafe(to));
+		assert (!this.safe.contains(to) && this.unsafe.contains(to));
 
 		if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
 			// #A continue protocol
@@ -164,6 +151,7 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 			this.irs.sendBuffer(to, from, to, this.buffersAlpha.get(to));
 			// safe "from"->"to", not safe on receipt : no clean yet
 			this.unsafe.remove(to);
+			this.safe.add(to);
 		} else {
 			// #B it 's enough for directional
 			this.clean(to);
@@ -183,26 +171,36 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 	 *            The buffer of messages that makes the link safe.
 	 */
 	public void receiveBuffer(Node from, Node to, ArrayList<MReliableBroadcast> bufferBeta) {
-		Node origin = to;
-		// #0 send a buffer back
-		if (this.node == to) {
-			origin = from;
-			if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
-				// last exchange for bidirectional safety
-				this.irs.sendBuffer(from, from, to, this.buffersPi.get(from));
-			}
+		if (this.node == from) {
+			this.receiveBufferAtFrom(to, bufferBeta);
+			this.receiveBufferCommon(to, bufferBeta);
+		} else {
+			this.receiveBufferAtTo(from, bufferBeta);
+			this.receiveBufferCommon(from, bufferBeta);
 		}
+	}
 
-		// from -> to is already safe when rho is received
-		// to -> from becomes safe here
-		assert ((this.node == from && this.irs.isSafe(to)) || (this.node == to && !this.irs.isSafe(origin)));
+	public void receiveBufferAtFrom(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
+		assert (this.safe.contains(origin) && !this.unsafe.contains(origin));
+	}
 
+	public void receiveBufferAtTo(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
+		assert (!this.safe.contains(origin) && this.unsafe.contains(origin));
+		// last exchange for bidirectional safety
+		if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
+			this.irs.sendBuffer(origin, origin, this.node, this.buffersPi.get(origin));
+			this.unsafe.remove(origin);
+			this.safe.add(origin);
+		}
+	}
+
+	public void receiveBufferCommon(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
 		// #1 filter useless messages of buffer
 		bufferBeta.removeAll(this.buffersAlpha.get(origin)); // potential
 		// #2 deliver messages that were not delivered (normal receive procedure
 		// including forward)
 		for (int i = 0; i < bufferBeta.size(); ++i) {
-			if (!this.buffersPi.get(from).contains(bufferBeta.get(i))) {
+			if (!this.buffersPi.get(origin).contains(bufferBeta.get(i))) {
 				this.receive(bufferBeta.get(i), origin);
 			}
 		}
@@ -212,32 +210,6 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 		this.expected.put(origin, toExpect);
 
 		this.clean(origin);
-
-		// #4 add to inview
-		if (this.node == to && PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
-			System.out.println("@node " + this.node.getID() + ";  addtoinview " + origin.getID());
-			this.safe.add(origin); // (TODO) meow
-		}
-	}
-
-	/**
-	 * Clean the structure when a link is closed in our out-view.
-	 * 
-	 * @param neighbor
-	 *            The process removed from our neighborhood.
-	 */
-	public void closeO(Node neighbor) {
-		this.clean(neighbor);
-	}
-
-	/**
-	 * Clean the structure when a link is closed in our in-view.
-	 * 
-	 * @param neighbor
-	 *            The process removed from our neighborhood.
-	 */
-	public void closeI(Node neighbor) {
-		this.clean(neighbor);
 	}
 
 	// DISSEMINATION:
@@ -371,14 +343,6 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 
 	// PEERSIM-RELATED:
 
-	public void processEvent(Node node, int protocolId, Object message) {
-		this._setNode(node);
-	}
-
-	public void nextCycle(Node node, int protocolId) {
-		this._setNode(node);
-	}
-
 	/**
 	 * Lazy loading the node.
 	 * 
@@ -386,9 +350,8 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 	 *            The node hosting this protocol.
 	 */
 	public void _setNode(Node n) {
-		if (this.node == null) {
+		if (this.node == null)
 			this.node = n;
-		}
 	}
 
 	public void setIRS(IRoutingService irs) {
@@ -406,10 +369,4 @@ public class PRCBcast implements EDProtocol, CDProtocol, IPRCB {
 	public boolean isNotSafe(Node neighbor) {
 		return !this.safe.contains(neighbor);
 	}
-
-	@Override
-	public Object clone() {
-		return new PRCBcast();
-	}
-
 }

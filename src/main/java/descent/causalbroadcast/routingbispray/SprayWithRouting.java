@@ -208,14 +208,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public boolean addNeighborSafe(Node peer) {
 		boolean result = this.addNeighbor(peer);
-		this.prcb.openO(peer, true);
+		this.prcb.open(peer, true);
 		return result; // (TODO) maybe more meaningful return value
 	}
 
 	public boolean addNeighborUnsafe(Node peer) {
 		boolean result = this.addNeighbor(peer);
 		if (result && this.prcb.isNotSafe(peer) && !this.prcb.isYetToBeSafe(peer)) {
-			this.prcb.openO(peer, false);
+			this.prcb.open(peer, false);
 		}
 		return result; // (TODO) maybe more meaningful return value
 	}
