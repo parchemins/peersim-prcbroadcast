@@ -6,7 +6,8 @@ import java.util.List;
 
 import org.apache.commons.collections4.bag.HashBag;
 
-import descent.causalbroadcast.PreventiveReliableCausalBroadcast;
+import descent.causalbroadcast.IPRCB;
+import descent.causalbroadcast.PRCBcast;
 import descent.causalbroadcast.WholePRCcast;
 import descent.causalbroadcast.messages.MAlpha;
 import descent.causalbroadcast.messages.MBeta;
@@ -29,7 +30,7 @@ import peersim.transport.Transport;
  */
 public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
-	public PreventiveReliableCausalBroadcast prcb;
+	public IPRCB prcb;
 
 	public Routes routes;
 
@@ -38,7 +39,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	////////////////////////////////////////////////////////////////////////////
 
-	public SprayWithRouting(PreventiveReliableCausalBroadcast prcb) {
+	public SprayWithRouting(IPRCB prcb) {
 		this.prcb = prcb;
 
 		this.routes = new Routes();
@@ -92,8 +93,9 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		Integer age = 0;
 		ArrayList<Node> possibleOldest = new ArrayList<Node>();
 		for (Node neighbor : this.outview.getPeers()) {
-			if (!this.routes.inUse().contains(neighbor) && this.isSafe(neighbor)
-					&& !this.prcb.buffersAlpha.containsKey(neighbor)) {
+			WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
+			// no currently used as route && from <- safe -> to
+			if (!this.routes.inUse().contains(neighbor) && this.prcb.isSafe(neighbor) && other.prcb.isSafe(this.node)) {
 				if (age < this.outview.ages.get(neighbor)) {
 					age = this.outview.ages.get(neighbor);
 					possibleOldest = new ArrayList<Node>();
@@ -103,9 +105,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 				}
 			}
 		}
-		if (possibleOldest.size() > 0) {
+		if (possibleOldest.size() > 0)
 			return possibleOldest.get(CommonState.r.nextInt(possibleOldest.size()));
-		}
 		return null;
 	}
 
@@ -120,8 +121,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 		// #B discard currently used links and unsafe links
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
-			if (this.routes.inUse().contains(neighbor) || !this.isSafe(neighbor)
-					|| this.prcb.buffersAlpha.containsKey(neighbor)) {
+			WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
+			// same condition in getoldest, we filter candidates
+			if (this.routes.inUse().contains(neighbor) || this.prcb.isNotSafe(neighbor)
+					|| other.prcb.isNotSafe(this.node)) {
 				clone.remove(neighbor);
 			}
 		}
@@ -148,7 +151,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void join(Node joiner, Node contact) {
-		this._clear();
 		this._setNode(joiner);
 		if (contact != null) {
 			System.out.println("JOIN @ " + joiner.getID() + " -> " + contact.getID());
@@ -202,6 +204,20 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		other.inview.add(this.node);
 
 		return alreadyContained;
+	}
+
+	public boolean addNeighborSafe(Node peer) {
+		boolean result = this.addNeighbor(peer);
+		this.prcb.openO(peer, true);
+		return result; // (TODO) maybe more meaningful return value
+	}
+
+	public boolean addNeighborUnsafe(Node peer) {
+		boolean result = this.addNeighbor(peer);
+		if (result && this.prcb.isNotSafe(peer) && !this.prcb.isYetToBeSafe(peer)) {
+			this.prcb.openO(peer, false);
+		}
+		return result; // (TODO) maybe more meaningful return value
 	}
 
 	public boolean removeNeighbor(Node peer) {
@@ -361,7 +377,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 		for (Node n : this.routes.inUse()) {
 			// inuse should not have unsafe links
-			assert (!this.prcb.isUnsafe(n));
+			assert (!this.prcb.isNotSafe(n));
 			result.add(n);
 		}
 		return result;
@@ -401,28 +417,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	@Override
 	protected boolean pFail(List<Node> path) {
 		return false;
-	}
-
-	public boolean isSafe(Node process) {
-		return (this.outview.contains(process) && !this.prcb.unsafe.contains(process)) || this.inview.contains(process)
-				|| this.routes.inUse().contains(process);
-	}
-
-	private void _clear() {
-		this.routes = new Routes();
-		this.outview = new SprayPartialView();
-		this.inview = new HashSet<Node>();
-	}
-
-	public void addToInView(Node neighbor) {
-		assert (((WholePRCcast) neighbor.getProtocol(WholePRCcast.PID)).swr.outview.contains(this.node));
-		this.inview.add(neighbor);
-	}
-
-	public boolean addToOutView(Node neighbor) {
-		boolean notAlreadyExists = !this.outview.contains(neighbor);
-		this.outview.addNeighbor(neighbor);
-		return notAlreadyExists;
 	}
 
 }

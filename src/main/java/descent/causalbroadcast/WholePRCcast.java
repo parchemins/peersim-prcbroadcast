@@ -22,19 +22,19 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	public static String PAR_PID = "pid";
 	public static Integer PID;
 
-	public PreventiveReliableCausalBroadcast prcb;
+	public PRCBcast prcb;
 	public SprayWithRouting swr;
 
 	public WholePRCcast(String prefix) {
 		WholePRCcast.PID = Configuration.getPid(prefix + "." + PAR_PID);
 
-		this.prcb = new PreventiveReliableCausalBroadcast(prefix);
+		this.prcb = new PRCBcast(prefix);
 		this.swr = new SprayWithRouting(this.prcb);
 		this.prcb.setIRS(this.swr);
 	}
 
 	public WholePRCcast() {
-		this.prcb = new PreventiveReliableCausalBroadcast();
+		this.prcb = new PRCBcast();
 		this.swr = new SprayWithRouting(this.prcb);
 		this.prcb.setIRS(this.swr);
 	}
@@ -53,9 +53,8 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 			assert (m.from == this.prcb.node);
 
 			this.swr.addRoute(m.from, m.mediator, m.to);
-			
-			assert (this.prcb.openO(m.to));
-			// }
+
+			this.swr.addNeighborUnsafe(m.to);
 
 		} else if (message instanceof IMControlMessage) {
 			IMControlMessage imcm = (IMControlMessage) message;

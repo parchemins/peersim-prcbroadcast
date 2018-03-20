@@ -2,7 +2,7 @@ package descent.observers;
 
 import java.util.ArrayList;
 
-import descent.causalbroadcast.PreventiveReliableCausalBroadcast;
+import descent.causalbroadcast.PRCBcast;
 import descent.causalbroadcast.WholePRCcast;
 import descent.causalbroadcast.routingbispray.SprayWithRouting;
 import descent.controllers.CDynamicNetwork;
@@ -24,7 +24,7 @@ public class PLocalSpace implements IObserverProgram {
 		ArrayList<Double> routes = new ArrayList<Double>();
 
 		for (Node n : CDynamicNetwork.networks.get(0)) {
-			PreventiveReliableCausalBroadcast prcb = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).prcb;
+			PRCBcast prcb = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).prcb;
 			SprayWithRouting swr = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).swr;
 
 			unsafe.add((double) prcb.unsafe.size());

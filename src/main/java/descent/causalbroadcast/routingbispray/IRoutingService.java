@@ -25,10 +25,4 @@ public interface IRoutingService {
 	public void sendToOutview(MReliableBroadcast m);
 
 	public HashSet<Node> getOutview();
-
-	public void addToInView(Node neighbor);
-
-	public boolean addToOutView(Node neighbor);
-
-	public boolean isSafe(Node neighbor);
 }
