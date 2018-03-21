@@ -59,26 +59,20 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			assert (!sample.isEmpty()); // contains at least q
 
 			// #3 lock links for routing purpose and #4 send connection messages
+			Integer qCounter = 0;
 			for (Node neighbor : sample) {
-				// System.out.println("@" + this.node.getID() + " orders " + q.getID() + " -> " + neighbor.getID());
-
-				SprayWithRouting other = ((WholePRCcast) q.getProtocol(WholePRCcast.PID)).swr;
-
+				// System.out.println("@" + this.node.getID() + " orders " +
+				// q.getID() + " -> " + neighbor.getID());
 				if (neighbor != this.node) {
 					this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
 					this.removeNeighbor(neighbor);
 				} else {
-					// this.outview.removeNeighbor(q);
-					// this.inview.add(q);
-					// other.outview.addNeighbor(this.node);
-					// if (!this.outview.contains(neighbor)) {
-					// other.inview.remove(this.node);
-					// }
-
-					// this.sendMConnectTo(q, this.node, new MConnectTo(q,
-					// this.node, null));
+					++qCounter;
 				}
-
+			}
+			this.sendMExchangeWith(q, qCounter);
+			for (int i = 0; i < qCounter ; ++i){
+				this.removeNeighbor(q);
 			}
 		}
 	}
@@ -139,7 +133,22 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public IMessage onPeriodicCall(Node origin, IMessage message) {
-		// TODO Auto-generated method stub
+		System.out.println("ONPREIREIDEDIOCAULLL " + origin.getID());
+		Integer nbReferences = (Integer) message.getPayload();
+
+		for (int i = 0; i < nbReferences; ++i) {
+			this.addNeighborTrySafeButIfNotFallbackToUnsafe(origin);
+		}
+
+		HashBag<Node> sample = this._getSample(null);
+
+		for (Node neighbor : sample) {
+			if (neighbor != origin) {
+				this.sendMConnectTo(origin, neighbor, new MConnectTo(origin, neighbor, this.node));
+				this.removeNeighbor(neighbor);
+			}
+		}
+
 		return null;
 	}
 
@@ -274,6 +283,16 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		} else {
 			this.addNeighborUnsafe(to);
 		}
+	}
+
+	public void sendMExchangeWith(Node to, Integer qCounter) {
+		assert (this.outview.contains(to));
+		this.addRoute(this.node, null, to);
+		this._sendControlMessage(to, new MExchangeWith(this.node, to, qCounter), "exchange with");
+	}
+
+	public void receiveMExchangeWith(Node from, MExchangeWith message) {
+		this.onPeriodicCall(from, message);
 	}
 
 	public void addRoute(Node from, Node mediator, Node to) {

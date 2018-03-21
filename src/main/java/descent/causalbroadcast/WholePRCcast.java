@@ -7,6 +7,7 @@ import descent.causalbroadcast.messages.MBuffer;
 import descent.causalbroadcast.messages.MPi;
 import descent.causalbroadcast.messages.MRho;
 import descent.causalbroadcast.routingbispray.MConnectTo;
+import descent.causalbroadcast.routingbispray.MExchangeWith;
 import descent.causalbroadcast.routingbispray.SprayWithRouting;
 import descent.controllers.IComposition;
 import descent.rps.APeerSampling;
@@ -47,7 +48,10 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		this.prcb._setNode(node);
 
 		// Give the message to the proper sub-protocol
-		if (message instanceof MConnectTo) {
+		if (message instanceof MExchangeWith) {
+			MExchangeWith m = (MExchangeWith) message;
+			this.swr.receiveMExchangeWith(m.from, m);
+		} else if (message instanceof MConnectTo) {
 			MConnectTo m = (MConnectTo) message;
 			assert (m.from == this.prcb.node);
 			this.swr.receiveMConnectTo(m.from, m.mediator, m.to);
