@@ -247,8 +247,12 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.outview.removeNeighbor(peer);
 		if (!this.outview.contains(peer)) {
 			other.inview.remove(this.node);
+			if (!this.inview.contains(peer)) {
+				assert (!other.outview.contains(this.node));
+				this.prcb.close(peer);
+				other.prcb.close(this.node);
+			}
 
-			this.prcb.close(peer);
 		}
 		return contained;
 	}
@@ -302,7 +306,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	private void _sendControlMessage(Node target, Object m, String info) {
-		boolean route = this.routes.hasRoute(target) && this.prcb.isSafe(this.routes.getRoute(target));
+		boolean route = this.routes.hasRoute(target);// && this.prcb.isSafe(this.routes.getRoute(target));
 		boolean direct = this.prcb.isSafe(target);
 
 		assert (route || direct); // no route nor forward
@@ -338,7 +342,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _send(Node to, Object m) {
-		assert (this.prcb.isSafe(to));
+		assert (this.prcb.isSafe(to) || this.routes.inUse().contains(to));
 
 		((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).send(this.node, to, m,
 				WholePRCcast.PID);

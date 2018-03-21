@@ -75,8 +75,9 @@ public class PRCBcast implements IPRCB {
 	}
 
 	public void close(Node to) {
-		// TODO Auto-generated method stub
-		// IMA HERE
+		assert (this.isSafe(to) || this.isYetToBeSafe(to));
+		this.clean(to);
+		this.safe.remove(to);
 	}
 
 	/**
