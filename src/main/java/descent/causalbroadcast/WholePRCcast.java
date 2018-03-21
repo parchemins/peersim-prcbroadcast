@@ -45,7 +45,6 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 
 	public void processEvent(Node node, int protocolId, Object message) {
 		this.prcb._setNode(node);
-		this.swr.routes.setNode(node);
 
 		// Give the message to the proper sub-protocol
 		if (message instanceof MConnectTo) {
@@ -74,6 +73,10 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 
 			} else {
 				// mediator
+				IMControlMessage m = (IMControlMessage) message;
+				// refresh the path (XXX) why is that needed
+				this.swr.routes.addRoute(m.getFrom(), this.prcb.node, m.getTo());
+
 				if (message instanceof MAlpha) {
 					this.swr.sendAlpha(imcm.getFrom(), imcm.getTo());
 				} else if (message instanceof MBeta) {

@@ -27,7 +27,7 @@ public class PVarianceAndArcCount implements IObserverProgram {
 		}
 
 		System.out.println(observer.size() + " " + observer.countArcs() + " " + observer.countArcsNoDuplicates() + " "
-				+ +observer.stdDeviationPartialView() + " " + observer.getViewSizeStats().toString() + " ");
+				+ observer.getViewSizeStats().toString() + " ");
 		// + " " + firstVar + " " + lastCount);
 
 	}

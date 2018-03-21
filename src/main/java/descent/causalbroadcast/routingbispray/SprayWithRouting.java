@@ -60,8 +60,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 			// #3 lock links for routing purpose and #4 send connection messages
 			for (Node neighbor : sample) {
-				// System.out.println("@" + this.node.getID() + " orders " +
-				// q.getID() + " -> " + neighbor.getID());
+				// System.out.println("@" + this.node.getID() + " orders " + q.getID() + " -> " + neighbor.getID());
 
 				SprayWithRouting other = ((WholePRCcast) q.getProtocol(WholePRCcast.PID)).swr;
 
@@ -146,6 +145,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void join(Node joiner, Node contact) {
 		this._setNode(joiner);
+		this.routes.setNode(joiner);
+
 		if (contact != null) {
 			// System.out.println("JOIN @ " + joiner.getID() + " -> " +
 			// contact.getID());
@@ -260,13 +261,13 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
 		// #1 mark nodes as currently used
-		this.routes.addRoute(from, this.node, to);
+		this.addRoute(from, this.node, to);
 		// #2 send the message
 		this._sendControlMessage(from, m, "connect to");
 	}
 
 	public void receiveMConnectTo(Node from, Node mediator, Node to) {
-		this.routes.addRoute(from, mediator, to);
+		this.addRoute(from, mediator, to);
 
 		if (mediator == null) {
 			this.addNeighborTrySafeButIfNotFallbackToUnsafe(to);
@@ -275,8 +276,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		}
 	}
 
+	public void addRoute(Node from, Node mediator, Node to) {
+		this.routes.addRoute(from, mediator, to);
+	}
+
 	// (receive alpha)
 	public void receiveMConnectFrom(Node from, Node mediator, Node to) {
+		if (to.getID() == 244)
+			System.out.println("medi " + mediator.getID());
 		this.routes.addRoute(from, mediator, to);
 	}
 
@@ -305,10 +312,12 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	private void _sendControlMessage(Node target, Object m, String info) {
-		boolean route = this.routes.hasRoute(target);// &&
-														// this.prcb.isSafe(this.routes.getRoute(target));
+		boolean route = this.routes.hasRoute(target);
 		boolean direct = this.prcb.isSafe(target);
 
+		if (!route && !direct) {
+			System.out.println("SCM T " + this.node.getID() + " to " + target.getID());
+		}
 		assert (route || direct); // no route nor forward
 
 		if (route) {

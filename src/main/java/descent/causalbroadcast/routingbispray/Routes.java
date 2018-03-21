@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import descent.causalbroadcast.PRCBcast;
+import descent.causalbroadcast.WholePRCcast;
 import peersim.core.CommonState;
 import peersim.core.Node;
 
@@ -27,20 +29,36 @@ public class Routes {
 	}
 
 	public void addRoute(Node from, Node mediator, Node to) {
-		this.upKeep();
+		PRCBcast prcb = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).prcb;
 
 		if (mediator == null && this.node == from) {
+			assert (this.routes.containsKey(to) || prcb.isSafe(to));
 			this.routes.put(to, new Route(null, to));
+
 		} else if (mediator == null && this.node == to) {
+			assert (this.routes.containsKey(from) || prcb.isSafe(from));
 			this.routes.put(from, new Route(null, from));
+
 		} else if (this.node == mediator) {
+			assert (this.routes.containsKey(from) || prcb.isSafe(from));
+			assert (this.routes.containsKey(to) || prcb.isSafe(to));
 			this.routes.put(from, new Route(null, from));
 			this.routes.put(to, new Route(null, to));
+
 		} else if (this.node == from) {
+			SprayWithRouting other = ((WholePRCcast) mediator.getProtocol(WholePRCcast.PID)).swr;
+
+			assert (other.routes.routes.containsKey(this.node) || this.routes.containsKey(mediator)
+					|| prcb.isSafe(mediator));
 			this.routes.put(to, new Route(mediator, to));
+
 		} else if (this.node == to) {
+			SprayWithRouting other = ((WholePRCcast) mediator.getProtocol(WholePRCcast.PID)).swr;
+			assert (other.routes.routes.containsKey(this.node) || this.routes.containsKey(mediator)
+					|| prcb.isSafe(mediator));
 			this.routes.put(from, new Route(mediator, from));
 		}
+		this.upKeep();
 	}
 
 	private void upKeep() {
