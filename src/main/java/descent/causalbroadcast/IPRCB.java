@@ -12,5 +12,7 @@ public interface IPRCB {
 
 	public boolean isNotSafe(Node neighbor);
 
+	public boolean isStillChecking(Node neighbor);
+
 	public void close(Node to);
 }

@@ -179,7 +179,9 @@ public class PRCBcast implements IPRCB {
 	}
 
 	public void receiveBufferAtFrom(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
-		assert (this.safe.contains(origin) && !this.unsafe.contains(origin));
+		// System.out.println("T " + this.node.getID() + " ; O " + origin.getID());
+		assert (this.safe.contains(origin));
+		assert (!this.unsafe.contains(origin));
 	}
 
 	public void receiveBufferAtTo(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
@@ -333,6 +335,8 @@ public class PRCBcast implements IPRCB {
 	}
 
 	private void clean(Node neighbor) {
+		// System.out.println("CLEAN T " + this.node.getID() + ";  O " + neighbor.getID());
+
 		this.unsafe.remove(neighbor);
 		this.buffersAlpha.remove(neighbor);
 		this.buffersPi.remove(neighbor);
@@ -366,5 +370,19 @@ public class PRCBcast implements IPRCB {
 
 	public boolean isNotSafe(Node neighbor) {
 		return !this.safe.contains(neighbor);
+	}
+
+	/**
+	 * Utility function that checks that at least one of involved processes is
+	 * still performing the safety checking. It goes from sendingAlpha to
+	 * receive the second buffer.
+	 * 
+	 * @param neighbor
+	 * @return
+	 */
+	public boolean isStillChecking(Node neighbor) {
+		PRCBcast other = ((WholePRCcast) neighbor.getProtocol(WholePRCcast.PID)).prcb;
+		return this.isYetToBeSafe(neighbor) || this.buffersAlpha.containsKey(neighbor) || other.isYetToBeSafe(this.node)
+				|| other.buffersAlpha.containsKey(neighbor);
 	}
 }

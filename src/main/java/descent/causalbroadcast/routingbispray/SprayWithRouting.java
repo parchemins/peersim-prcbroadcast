@@ -118,8 +118,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
 			WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
 			// same condition in getoldest, we filter candidates
-			if (this.routes.inUse().contains(neighbor) || this.prcb.isNotSafe(neighbor)
-					|| other.prcb.isNotSafe(this.node)) {
+			if (this.routes.inUse().contains(neighbor) || this.prcb.isStillChecking(neighbor)) {
 				clone.remove(neighbor);
 			}
 		}
@@ -306,7 +305,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	private void _sendControlMessage(Node target, Object m, String info) {
-		boolean route = this.routes.hasRoute(target);// && this.prcb.isSafe(this.routes.getRoute(target));
+		boolean route = this.routes.hasRoute(target);// &&
+														// this.prcb.isSafe(this.routes.getRoute(target));
 		boolean direct = this.prcb.isSafe(target);
 
 		assert (route || direct); // no route nor forward
