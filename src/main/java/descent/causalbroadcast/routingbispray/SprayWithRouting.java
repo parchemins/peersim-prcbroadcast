@@ -1,7 +1,6 @@
 package descent.causalbroadcast.routingbispray;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -55,7 +54,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		Node q = this._getOldest();
 		if (q != null) {
 
-			System.out.println("PERIODIC @" + this.node.getID() + " -> " + q.getID());
+			// System.out.println("PERIODIC @" + this.node.getID() + " -> " +
+			// q.getID());
 			// #2 prepare a sample
 			HashBag<Node> sample = this._getSample(q);
 
@@ -64,7 +64,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			// #3 lock links for routing purpose and #4 send connection messages
 			Integer qCounter = 0;
 			for (Node neighbor : sample) {
-				System.out.println("@" + this.node.getID() + " orders " + q.getID() + " -> " + neighbor.getID());
+				// System.out.println("@" + this.node.getID() + " orders " +
+				// q.getID() + " -> " + neighbor.getID());
 				if (neighbor != this.node) {
 					this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
 					this.removeNeighbor(neighbor);
@@ -114,7 +115,9 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #B discard currently used links and unsafe links
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
 			// same condition in getoldest, we filter candidates
-			if (this.routes.inUse().contains(neighbor) || this.prcb.isStillChecking(neighbor)) {
+			WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
+			if (this.routes.inUse().contains(neighbor) || this.prcb.isStillChecking(neighbor)
+					|| !this.prcb.isSafe(neighbor) || !other.prcb.isSafe(this.node)) {
 				clone.remove(neighbor);
 			}
 		}
@@ -133,8 +136,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 				sample.add(neighbor);
 				WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
 				// check
+				// System.out.println("other " + neighbor.getID());
 				assert (this.prcb.isSafe(neighbor));
-				System.out.println("other" + neighbor.getID());
 				assert (other.prcb.isSafe(this.node));
 			}
 			clone.remove(neighbor, 1);
@@ -144,11 +147,15 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public IMessage onPeriodicCall(Node origin, IMessage message) {
-		System.out.println("ON PERIODIC @" + this.node.getID() + " FROM " + origin.getID());
+		// System.out.println("ON PERIODIC @" + this.node.getID() + " FROM " +
+		// origin.getID());
 		Integer nbReferences = (Integer) message.getPayload();
 
 		for (int i = 0; i < nbReferences; ++i) {
-			this.addNeighborTrySafeButIfNotFallbackToUnsafe(origin);
+			// System.out.println("@" + this.node.getID() + " -> " +
+			// origin.getID());
+			boolean isSafeInstant = this.addNeighborTrySafeButIfNotFallbackToUnsafe(origin);
+			// System.out.println(isSafeInstant);
 		}
 
 		/*
@@ -230,13 +237,11 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public boolean addNeighborUnsafe(Node peer) {
-		WholePRCcast other = (WholePRCcast) peer.getProtocol(WholePRCcast.PID);
 		boolean isNew = this.addNeighbor(peer);
 		// last part of condition is a cheat to ensure that only one
 		// safety checking run at a time. Without it, the protocol is more
 		// complex to handle concurrent adds.
-		if (isNew && this.prcb.isNotSafe(peer) && !this.prcb.isYetToBeSafe(peer)
-				&& !other.prcb.isYetToBeSafe(this.node)) {
+		if (isNew && !this.prcb.isStillChecking(peer) && !this.prcb.isSafe(peer)) {
 			this.prcb.open(peer, false);
 		}
 		return isNew; // (TODO) maybe more meaningful return value
@@ -245,21 +250,22 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public boolean addNeighborTrySafeButIfNotFallbackToUnsafe(Node peer) {
 		WholePRCcast other = (WholePRCcast) peer.getProtocol(WholePRCcast.PID);
 		boolean isNew = this.addNeighbor(peer);
-		if (isNew) {
+		boolean isSafe = false;
+		if (isNew && !this.prcb.isStillChecking(peer) && !this.prcb.isSafe(peer)) {
 			// ensure that no concurrent adds are performed
-			if (!this.prcb.isStillChecking(peer) && this.prcb.isNotSafe(peer) && !this.prcb.isYetToBeSafe(peer)
-					&& !other.prcb.isYetToBeSafe(this.node)) {
-				this.prcb.open(peer, true);
-			} else {
-				assert (this.prcb.isStillChecking(peer));
-				// let the safety check run
-			}
+			this.prcb.open(peer, true); // from -- safe -> to
+			other.prcb.open(this.node, true); // to -- safe -> from
+			isSafe = true;
+		} else {
+			// let the safety check run
+			isSafe = false;
 		}
-		return isNew; // (TODO) maybe more meaningful return value
+		return isSafe; // (TODO) maybe more meaningful return value
 	}
 
 	public boolean removeNeighbor(Node peer) {
-		System.out.println("@" + this.node.getID() + " --X-> " + peer.getID());
+		// System.out.println("@" + this.node.getID() + " --X-> " +
+		// peer.getID());
 		boolean contained = this.outview.contains(peer);
 		SprayWithRouting other = ((WholePRCcast) peer.getProtocol(WholePRCcast.PID)).swr;
 
