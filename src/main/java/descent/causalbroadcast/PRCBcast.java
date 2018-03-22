@@ -179,7 +179,6 @@ public class PRCBcast implements IPRCB {
 	}
 
 	public void receiveBufferAtFrom(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
-		// System.out.println("T " + this.node.getID() + " ; O " + origin.getID());
 		assert (this.safe.contains(origin));
 		assert (!this.unsafe.contains(origin));
 	}
@@ -335,8 +334,6 @@ public class PRCBcast implements IPRCB {
 	}
 
 	private void clean(Node neighbor) {
-		// System.out.println("CLEAN T " + this.node.getID() + ";  O " + neighbor.getID());
-
 		this.unsafe.remove(neighbor);
 		this.buffersAlpha.remove(neighbor);
 		this.buffersPi.remove(neighbor);

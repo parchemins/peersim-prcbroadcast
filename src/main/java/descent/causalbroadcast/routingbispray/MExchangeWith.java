@@ -1,6 +1,5 @@
 package descent.causalbroadcast.routingbispray;
 
-import descent.causalbroadcast.messages.IMControlMessage;
 import descent.rps.IMessage;
 import peersim.core.Node;
 

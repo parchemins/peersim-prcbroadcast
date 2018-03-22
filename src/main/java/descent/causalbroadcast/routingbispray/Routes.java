@@ -6,8 +6,10 @@ import java.util.Set;
 
 import descent.causalbroadcast.PRCBcast;
 import descent.causalbroadcast.WholePRCcast;
+import peersim.config.FastConfig;
 import peersim.core.CommonState;
 import peersim.core.Node;
+import peersim.transport.Transport;
 
 /**
  * Data structure that register routes. It removes them over time if unused.
@@ -16,7 +18,8 @@ public class Routes {
 
 	public Node node;
 
-	public Integer retainingTime = 10000; // (TODO configurable)
+	// worst-case scenario, we have to keep routes for 8 times latency.
+	public Integer multiplicativeFactorForRetainingRoute = 8;
 
 	public HashMap<Node, Route> routes;
 
@@ -62,9 +65,13 @@ public class Routes {
 	}
 
 	private void upKeep() {
+		// Integer retainingTime = this.retainingTime;
+		Integer retainingTime = ((int) (((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID)))
+				.getLatency(null, null)) * this.multiplicativeFactorForRetainingRoute);
+
 		for (Node n : new HashSet<Node>(routes.keySet())) {
 			Route r = this.routes.get(n);
-			if (r.timestamp < CommonState.getIntTime() - this.retainingTime) {
+			if (r.timestamp < CommonState.getIntTime() - retainingTime) {
 				this.routes.remove(n);
 			}
 		}

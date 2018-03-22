@@ -50,7 +50,9 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		// Give the message to the proper sub-protocol
 		if (message instanceof MExchangeWith) {
 			MExchangeWith m = (MExchangeWith) message;
-			this.swr.receiveMExchangeWith(m.from, m);
+			assert (m.from == this.prcb.node);
+			this.swr.receiveMExchangeWith(m.to, m);
+
 		} else if (message instanceof MConnectTo) {
 			MConnectTo m = (MConnectTo) message;
 			assert (m.from == this.prcb.node);
@@ -79,7 +81,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 				// mediator
 				IMControlMessage m = (IMControlMessage) message;
 				// refresh the path (XXX) why is that needed
-				this.swr.routes.addRoute(m.getFrom(), this.prcb.node, m.getTo());
+				this.swr.addRoute(m.getFrom(), this.prcb.node, m.getTo());
 
 				if (message instanceof MAlpha) {
 					this.swr.sendAlpha(imcm.getFrom(), imcm.getTo());

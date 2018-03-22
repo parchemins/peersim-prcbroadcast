@@ -8,17 +8,14 @@ import peersim.core.Node;
  */
 public class Route {
 
-	public Integer timestamp;
+	public final Integer timestamp;
+
 	public final Node mediator;
 	public final Node dest;
 
 	public Route(Node mediator, Node dest) {
 		this.mediator = mediator;
 		this.dest = dest;
-		this.timestamp = CommonState.getIntTime();
-	}
-
-	public void update() {
 		this.timestamp = CommonState.getIntTime();
 	}
 
