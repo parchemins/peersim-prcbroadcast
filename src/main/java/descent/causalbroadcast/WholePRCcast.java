@@ -13,6 +13,7 @@ import descent.controllers.IComposition;
 import descent.rps.APeerSampling;
 import peersim.cdsim.CDProtocol;
 import peersim.config.Configuration;
+import peersim.core.CommonState;
 import peersim.core.Node;
 import peersim.edsim.EDProtocol;
 
@@ -23,11 +24,15 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	public static String PAR_PID = "pid";
 	public static Integer PID;
 
+	public static String PAR_STOP = "stop";
+	public static Integer STOP;
+
 	public PRCBcast prcb;
 	public SprayWithRouting swr;
 
 	public WholePRCcast(String prefix) {
-		WholePRCcast.PID = Configuration.getPid(prefix + "." + PAR_PID);
+		WholePRCcast.PID = Configuration.getPid(prefix + "." + WholePRCcast.PAR_PID);
+		WholePRCcast.STOP = Configuration.getInt(prefix + "." + WholePRCcast.PAR_STOP);
 
 		this.prcb = new PRCBcast();
 		this.swr = new SprayWithRouting(this.prcb);
@@ -41,7 +46,8 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	}
 
 	public void nextCycle(Node node, int protocolId) {
-		this.swr.periodicCall();
+		if (CommonState.getIntTime() < WholePRCcast.STOP)
+			this.swr.periodicCall();
 	}
 
 	public void processEvent(Node node, int protocolId, Object message) {

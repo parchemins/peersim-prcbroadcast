@@ -30,6 +30,7 @@ protocol.urt.step CYCLE/120
 protocol.prc descent.causalbroadcast.WholePRCcast
 protocol.prc.pid prc
 protocol.prc.step SHUFFLE_PERIOD
+protocol.prc.stop CYCLES/2*CYCLE
 protocol.prc.linkable prc
 protocol.prc.delta 1
 protocol.prc.transport urt
