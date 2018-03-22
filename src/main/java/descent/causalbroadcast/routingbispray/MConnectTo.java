@@ -12,6 +12,7 @@ public class MConnectTo {
 	public final Node mediator;
 
 	public MConnectTo(Node from, Node to, Node mediator) {
+		assert(from != to);
 		this.from = from;
 		this.to = to;
 		this.mediator = mediator;

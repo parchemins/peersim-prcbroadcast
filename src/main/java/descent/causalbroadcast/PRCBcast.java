@@ -383,6 +383,6 @@ public class PRCBcast implements IPRCB {
 	public boolean isStillChecking(Node neighbor) {
 		PRCBcast other = ((WholePRCcast) neighbor.getProtocol(WholePRCcast.PID)).prcb;
 		return this.isYetToBeSafe(neighbor) || this.buffersAlpha.containsKey(neighbor) || other.isYetToBeSafe(this.node)
-				|| other.buffersAlpha.containsKey(neighbor);
+				|| other.buffersAlpha.containsKey(this.node);
 	}
 }
