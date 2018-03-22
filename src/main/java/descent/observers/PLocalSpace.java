@@ -10,7 +10,9 @@ import descent.controllers.CDynamicNetwork;
 import descent.observers.structure.DictGraph;
 import descent.observers.structure.IObserverProgram;
 import descent.observers.structure.Stats;
+import peersim.config.FastConfig;
 import peersim.core.Node;
+import peersim.transport.Transport;
 
 public class PLocalSpace implements IObserverProgram {
 
@@ -41,11 +43,17 @@ public class PLocalSpace implements IObserverProgram {
 			duplicatesRouteSafe.add((double) view.size());
 		}
 
+		Node theOne = CDynamicNetwork.networks.get(0).get(0);
+
+		Long latency = ((Transport) theOne.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).getLatency(null,
+				null);
+
 		Stats sUnsafe = Stats.getFromSmall(unsafe);
 		Stats sRoutes = Stats.getFromSmall(routes);
 		Stats sSafe = Stats.getFromSmall(safe);
 		Stats sDuplicates = Stats.getFromSmall(duplicatesRouteSafe);
-		System.out.println("PLS. " + sUnsafe.mean + "  " + sSafe.mean + "  " + sRoutes.mean + " " + sDuplicates.mean);
+		System.out.println("PLS. " + latency + " " + sUnsafe.mean + "  " + sSafe.mean + "  " + sRoutes.mean + " "
+				+ sDuplicates.mean);
 	}
 
 	public void onLastTick(DictGraph observer) {

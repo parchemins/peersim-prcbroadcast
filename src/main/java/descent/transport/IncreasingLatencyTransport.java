@@ -19,16 +19,24 @@ public class IncreasingLatencyTransport implements Transport {
 
 	private static final String PAR_STEP = "step";
 	private static long step;
+	
+	private static final String PAR_STOP = "stop";
+	private static long STOP;
 
 	public IncreasingLatencyTransport(String prefix) {
 		IncreasingLatencyTransport.min = Configuration.getInt(prefix + "." + IncreasingLatencyTransport.PAR_MIN, 0);
 		IncreasingLatencyTransport.inc = Configuration.getInt(prefix + "." + IncreasingLatencyTransport.PAR_INC, 0);
 		IncreasingLatencyTransport.from = Configuration.getLong(prefix + "." + IncreasingLatencyTransport.PAR_FROM, 0);
 		IncreasingLatencyTransport.step = Configuration.getLong(prefix + "." + IncreasingLatencyTransport.PAR_STEP, 1);
+		IncreasingLatencyTransport.STOP = Configuration.getLong(prefix +"."+ IncreasingLatencyTransport.PAR_STOP);
 	}
 
 	public long getLatency(Node src, Node dest) {
-		long nbStep = (CommonState.getTime() - IncreasingLatencyTransport.from) / IncreasingLatencyTransport.step;
+		Long time  = CommonState.getTime();
+		if (CommonState.getTime() > IncreasingLatencyTransport.STOP)
+			time = IncreasingLatencyTransport.STOP;
+		
+		long nbStep = (time - IncreasingLatencyTransport.from) / IncreasingLatencyTransport.step;
 		if (nbStep > 0) {
 			return nbStep * IncreasingLatencyTransport.inc + IncreasingLatencyTransport.min;
 		} else {

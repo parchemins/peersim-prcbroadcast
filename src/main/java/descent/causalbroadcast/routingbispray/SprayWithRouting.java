@@ -53,6 +53,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #1 select a neighbor to exchange with
 		Node q = this._getOldest();
 		if (q != null) {
+
+			System.out.println("PERIODIC @" + this.node.getID() + "; " + q.getID());
 			// #2 prepare a sample
 			HashBag<Node> sample = this._getSample(q);
 
@@ -83,7 +85,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
 			// no currently used as route && from <- safe -> to
 			if (!this.routes.inUse().contains(neighbor) && !this.prcb.isStillChecking(neighbor)
-					&& this.prcb.isSafe(neighbor) && other.prcb.isSafe(this.node)) {
+					&& this.prcb.isSafe(neighbor)) {
 				if (age < this.outview.ages.get(neighbor)) {
 					age = this.outview.ages.get(neighbor);
 					possibleOldest = new ArrayList<Node>();
@@ -112,7 +114,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			// same condition in getoldest, we filter candidates
 			WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
 			if (this.routes.inUse().contains(neighbor) || this.prcb.isStillChecking(neighbor)
-					|| !this.prcb.isSafe(neighbor) || !other.prcb.isSafe(this.node)) {
+					|| !this.prcb.isSafe(neighbor)) {
 				clone.remove(neighbor);
 			}
 		}
@@ -142,6 +144,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public IMessage onPeriodicCall(Node origin, IMessage message) {
 		Integer nbReferences = (Integer) message.getPayload();
+
+		System.out.println("ON PERIODIC @" + this.node.getID() + ";; " + origin.getID() + " x" + nbReferences);
 		SprayWithRouting other = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
 
 		for (int i = 0; i < nbReferences; ++i)
@@ -251,6 +255,9 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public boolean removeNeighbor(Node peer) {
+		if (this.node.getID() == 706) {
+			System.out.println("REM " + peer.getID());
+		}
 		boolean contained = this.outview.contains(peer);
 		SprayWithRouting other = ((WholePRCcast) peer.getProtocol(WholePRCcast.PID)).swr;
 
@@ -291,14 +298,19 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void sendMExchangeWith(Node dest, Integer qCounter) {
-		assert (this.outview.contains(dest));
+		SprayWithRouting other = ((WholePRCcast) dest.getProtocol(WholePRCcast.PID)).swr;
+		assert (this.outview.contains(dest) && other.inview.contains(this.node));
 		this.addRoute(dest, null, this.node);
 		this._sendControlMessage(dest, new MExchangeWith(dest, this.node, qCounter), "exchange with");
 	}
 
 	public void receiveMExchangeWith(Node origin, MExchangeWith message) {
 		SprayWithRouting other = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
-		assert (this.inview.contains(origin) || other.routes.hasRoute(this.node));
+		if (!this.inview.contains(origin)) {
+			System.out.println("@" + this.node.getID() + " ;; " + origin.getID());
+		}
+		assert (this.inview.contains(origin));// ||
+												// other.routes.hasRoute(this.node));
 		this.addRoute(this.node, null, origin);
 		this.onPeriodicCall(origin, message);
 	}

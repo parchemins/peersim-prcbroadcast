@@ -94,7 +94,7 @@ public class Routes {
 		this.upKeep();
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.routes.keySet()) {
-			if (this.routes.get(n).mediator != null) {
+			if (this.routes.get(n).isUsingMediator()) {
 				result.add(this.routes.get(n).mediator);
 			} else {
 				result.add(n);

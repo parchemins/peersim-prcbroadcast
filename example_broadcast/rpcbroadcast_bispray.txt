@@ -2,7 +2,7 @@
 SIZE 1000
 
 # parameters of periodic execution
-CYCLES 100
+CYCLES 60
 CYCLE 60000
 
 MIN_DELAY 200
@@ -25,12 +25,13 @@ protocol.urt descent.transport.IncreasingLatencyTransport
 protocol.urt.min 0
 protocol.urt.inc 10
 protocol.urt.from 25*CYCLE
-protocol.urt.step CYCLE/120
+protocol.urt.stop 50*CYCLE
+protocol.urt.step CYCLE/10
 
 protocol.prc descent.causalbroadcast.WholePRCcast
 protocol.prc.pid prc
 protocol.prc.step SHUFFLE_PERIOD
-protocol.prc.stop CYCLES/2*CYCLE
+protocol.prc.stop 50*CYCLE
 protocol.prc.linkable prc
 protocol.prc.delta 1
 protocol.prc.transport urt
