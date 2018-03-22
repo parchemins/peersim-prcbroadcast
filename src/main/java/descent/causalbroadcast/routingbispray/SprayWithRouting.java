@@ -158,13 +158,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			// System.out.println(isSafeInstant);
 		}
 
-		/*
-		 * HashBag<Node> sample = this._getSample(null);
-		 * 
-		 * for (Node neighbor : sample) { if (neighbor != origin) {
-		 * this.sendMConnectTo(origin, neighbor, new MConnectTo(origin,
-		 * neighbor, this.node)); this.removeNeighbor(neighbor); } }
-		 */
+		HashBag<Node> sample = this._getSample(null);
+
+		for (Node neighbor : sample) {
+			if (neighbor != origin) {
+				this.sendMConnectTo(origin, neighbor, new MConnectTo(origin, neighbor, this.node));
+				this.removeNeighbor(neighbor);
+			}
+		}
 
 		return null;
 	}
