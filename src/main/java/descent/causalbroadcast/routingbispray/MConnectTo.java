@@ -1,11 +1,12 @@
 package descent.causalbroadcast.routingbispray;
 
+import descent.causalbroadcast.messages.IMControlMessage;
 import peersim.core.Node;
 
 /**
  * Ask a process to connect to another process using the sender as mediator.
  */
-public class MConnectTo {
+public class MConnectTo implements IMControlMessage {
 
 	public final Node from;
 	public final Node to;
@@ -23,6 +24,22 @@ public class MConnectTo {
 
 	public boolean isDirect() {
 		return this.mediator == null;
+	}
+
+	public Node getFrom() {
+		return this.from;
+	}
+
+	public Node getTo() {
+		return this.to;
+	}
+
+	public Node getSender() {
+		return this.mediator;
+	}
+
+	public Node getReceiver() {
+		return this.from;
 	}
 
 }

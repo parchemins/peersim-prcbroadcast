@@ -66,7 +66,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			for (Node neighbor : sample) {
 				if (neighbor != this.node) {
 					System.out.println("from " + q.getID() + " -> " + neighbor.getID());
-					this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
+					this.sendMConnectTo(q, neighbor);
 					this.removeNeighbor(neighbor);
 				} else {
 					++qCounter;
@@ -159,7 +159,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 		for (Node neighbor : sample) {
 			if (neighbor != origin) {
-				this.sendMConnectTo(origin, neighbor, new MConnectTo(origin, neighbor, this.node));
+				this.sendMConnectTo(origin, neighbor);
 				this.removeNeighbor(neighbor);
 			}
 		}
@@ -194,7 +194,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		} else {
 			// #2 share the subscription to neighbors
 			for (Node neighbor : safeNeighbors) {
-				this.sendMConnectTo(neighbor, origin, new MConnectTo(neighbor, origin, this.node));
+				this.sendMConnectTo(neighbor, origin);
 			}
 		}
 	}
@@ -283,11 +283,11 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	// CONTROL MESSAGES:
 
-	public void sendMConnectTo(Node from, Node to, MConnectTo m) {
+	public void sendMConnectTo(Node from, Node to) {
 		// #1 mark nodes as currently used
 		this.addRoute(from, this.node, to);
 		// #2 send the message
-		this._sendControlMessage(from, m);
+		this._sendControlMessage(from, new MConnectTo(from, this.node, to));
 	}
 
 	public void receiveMConnectTo(MConnectTo m) {
@@ -298,10 +298,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		if (m.mediator == null) {
 			if (this.node.getID() == 45)
 				System.out.println("A");
-			this.addNeighborTrySafeButIfNotFallbackToUnsafe(to);
+			this.addNeighborTrySafeButIfNotFallbackToUnsafe(new MExchangeWith(m.from, m.to, 1)); // ugly
 		} else {
 			if (this.node.getID() == 45) {
-				System.out.println("B -> " + to.getID());
+				System.out.println("B -> " + m.to.getID());
 				if (m.mediator == null)
 					System.out.println("mia");
 			}
@@ -339,15 +339,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	// from: process A; to: process B; A -> alpha -> B
-	public void sendAlpha(Node from, Node to) {
-		Node mediator = null;
-
-		System.out.println("@" + this.node.getID() + "; f " + from.getID() + "; t " + to.getID());
-		if (this.node != from && this.node != to) {
-			System.out.println("meow");
-			mediator = this.node; // ugly
-		}
-		this._sendControlMessage(to, new MAlpha(from, mediator, to));
+	public void sendAlpha(MConnectTo m) {
+		this._sendControlMessage(m.to, new MAlpha(m.from, m.mediator, m.to));
 	}
 
 	// from: process A; to: process B; B -> beta -> A
