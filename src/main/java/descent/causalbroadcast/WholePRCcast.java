@@ -46,13 +46,11 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	}
 
 	public void nextCycle(Node node, int protocolId) {
-		// if (CommonState.getIntTime() < WholePRCcast.STOP)
-		// this.swr.periodicCall();
+		if (CommonState.getIntTime() < WholePRCcast.STOP)
+			this.swr.periodicCall();
 	}
 
 	public void processEvent(Node node, int protocolId, Object message) {
-		this.prcb._setNode(node);
-
 		// Give the message to the proper sub-protocol
 		if (message instanceof MExchangeWith) {
 			MExchangeWith m = (MExchangeWith) message;

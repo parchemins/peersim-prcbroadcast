@@ -45,8 +45,6 @@ public class Routes {
 
 		} else if (mediator == null && this.node == to) {
 			// #B from --> this
-			if (!(this.routes.containsKey(from) || prcb.isSafe(from)))
-				System.out.println("@"+ this.node.getID() + ";;; from "+ from.getID());
 			assert (this.routes.containsKey(from) || prcb.isSafe(from));
 			if (!this.routes.containsKey(from))
 				this.routes.put(from, new ArrayList<Route>());

@@ -16,4 +16,6 @@ public interface IPRCB {
 	public boolean isStillChecking(Node neighbor);
 
 	public void close(Node to);
+
+	public void setNode(Node n);
 }

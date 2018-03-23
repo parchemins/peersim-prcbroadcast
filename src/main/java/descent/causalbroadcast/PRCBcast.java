@@ -76,6 +76,7 @@ public class PRCBcast implements IPRCB {
 			this.safe.add(other);
 		} else {
 			// #B otherwise, safety check starts
+			assert (this.node == m.from);
 			this.unsafe.add(m.to);
 			this.irs.sendAlpha(m);
 		}
@@ -355,7 +356,7 @@ public class PRCBcast implements IPRCB {
 	 * @param n
 	 *            The node hosting this protocol.
 	 */
-	public void _setNode(Node n) {
+	public void setNode(Node n) {
 		if (this.node == null)
 			this.node = n;
 	}

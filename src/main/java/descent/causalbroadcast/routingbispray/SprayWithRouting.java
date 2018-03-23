@@ -55,7 +55,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		Node q = this._getOldest();
 		if (q != null) {
 
-			System.out.println("PERIODIC @" + this.node.getID() + "; " + q.getID());
+			// System.out.println("PERIODIC @" + this.node.getID() + "; " + q.getID());
 			// #2 prepare a sample
 			HashBag<Node> sample = this._getSample(q);
 
@@ -65,7 +65,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			Integer qCounter = 0;
 			for (Node neighbor : sample) {
 				if (neighbor != this.node) {
-					System.out.println("from " + q.getID() + " -> " + neighbor.getID());
+					// System.out.println("from " + q.getID() + " -> " + neighbor.getID());
 					this.sendMConnectTo(q, neighbor);
 					this.removeNeighbor(neighbor);
 				} else {
@@ -146,7 +146,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public IMessage onPeriodicCall(Node origin, IMessage message) {
 		MExchangeWith m = (MExchangeWith) message;
 
-		System.out.println("ON PERIODIC @" + this.node.getID() + ";; " + origin.getID() + " x" + m.nbReferences);
+		// System.out.println("ON PERIODIC @" + this.node.getID() + ";; " + origin.getID() + " x" + m.nbReferences);
 		SprayWithRouting other = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
 
 		for (int i = 0; i < m.nbReferences; ++i)
@@ -169,6 +169,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public void join(Node joiner, Node contact) {
 		this._setNode(joiner);
 		this.routes.setNode(joiner);
+		this.prcb.setNode(joiner);
 
 		if (contact != null) {
 			SprayWithRouting swr = ((WholePRCcast) contact.getProtocol(WholePRCcast.PID)).swr;
@@ -182,14 +183,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void onSubscription(Node origin) {
 		HashBag<Node> safeNeighbors = new HashBag<Node>();
-		for (Node neighbor : this.outview.getPeers()) {
-			if (this.prcb.isSafe(neighbor) && !this.prcb.isStillChecking(neighbor)) {
+		for (Node neighbor : this.outview.partialView) {
+			if (this.prcb.isSafe(neighbor)) {
 				safeNeighbors.add(neighbor);
 			}
 		}
 		if (safeNeighbors.isEmpty()) {
 			// #1 keep the subscription for ourself
-			this.addNeighbor(origin);
+			this.addNeighbor(origin); // already safe by design
 		} else {
 			// #2 share the subscription to neighbors
 			for (Node neighbor : safeNeighbors) {
@@ -227,6 +228,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.prcb.open(new MConnectTo(this.node, null, peer), true);
 		// to -- safe -> from
 		other.prcb.open(new MConnectTo(this.node, null, peer), true);
+		assert (this.prcb.isSafe(peer));
+		assert (other.prcb.isSafe(this.node));
 		return isNew; // (TODO) maybe more meaningful return value
 	}
 
@@ -338,32 +341,16 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void _sendControlMessage(Node dest, IMControlMessage m) {
-		// System.out.println("SEND CM @" + this.node.getID() + " to " +
-		// dest.getID());
-		// if (m.getMediator() == null) {
-		// System.out.println(m.getFrom().getID() + " -> " + m.getTo().getID());
-		// } else {
-		// System.out.println(m.getFrom().getID() + " -- " +
-		// m.getMediator().getID() + " -> " + m.getTo().getID());
-		// }
-
 		if (m.getMediator() != null && m.getMediator() != this.node) {
+			assert(this.routes.inUse().contains(m.getMediator()));
 			this._send(m.getMediator(), m);
 		} else if (m.getMediator() != null && m.getMediator() == this.node) {
+			assert(this.routes.inUse().contains(m.getReceiver()));
 			this._send(m.getReceiver(), m);
 		} else if (m.getMediator() == null) {
+			assert(this.routes.inUse().contains(dest));
 			this._send(dest, m);
 		}
-
-		/*
-		 * boolean route = this.routes.hasRoute(dest); boolean direct =
-		 * this.prcb.isSafe(dest);
-		 * 
-		 * assert (route || direct); // no route nor forward
-		 * 
-		 * if (direct) { this._send(dest, m); // forward } else if (route) {
-		 * this._send(this.routes.getRoute(dest), m); // route }
-		 */
 	}
 
 	public void sendBuffer(Node dest, Node from, Node to, ArrayList<MReliableBroadcast> buffer) {

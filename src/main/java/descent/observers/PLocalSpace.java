@@ -35,7 +35,7 @@ public class PLocalSpace implements IObserverProgram {
 			PRCBcast prcb = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).prcb;
 			SprayWithRouting swr = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).swr;
 
-			outview.add((double) swr.outview.size());
+			outview.add((double) swr.outview.partialView.size());
 			inview.add((double) swr.inview.size());
 
 			unsafe.add((double) prcb.unsafe.size());
