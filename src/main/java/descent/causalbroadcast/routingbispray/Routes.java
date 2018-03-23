@@ -1,5 +1,6 @@
 package descent.causalbroadcast.routingbispray;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -21,10 +22,10 @@ public class Routes {
 	// worst-case scenario, we have to keep routes for 8 times latency.
 	public Integer multiplicativeFactorForRetainingRoute = 8;
 
-	public HashMap<Node, Route> routes;
+	public HashMap<Node, ArrayList<Route>> routes;
 
 	public Routes() {
-		this.routes = new HashMap<Node, Route>();
+		this.routes = new HashMap<Node, ArrayList<Route>>();
 	}
 
 	public void setNode(Node node) {
@@ -35,45 +36,74 @@ public class Routes {
 		PRCBcast prcb = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).prcb;
 
 		if (mediator == null && this.node == from) {
+			// #A this --> to
 			assert (this.routes.containsKey(to) || prcb.isSafe(to));
-			this.routes.put(to, new Route(null, to));
+			if (!this.routes.containsKey(to))
+				this.routes.put(to, new ArrayList<Route>());
+
+			this.routes.get(to).add(new Route(null, to));
 
 		} else if (mediator == null && this.node == to) {
+			// #B from --> this
+			if (!(this.routes.containsKey(from) || prcb.isSafe(from)))
+				System.out.println("@"+ this.node.getID() + ";;; from "+ from.getID());
 			assert (this.routes.containsKey(from) || prcb.isSafe(from));
-			this.routes.put(from, new Route(null, from));
+			if (!this.routes.containsKey(from))
+				this.routes.put(from, new ArrayList<Route>());
+
+			this.routes.get(from).add(new Route(null, from));
 
 		} else if (this.node == mediator) {
+			// #C from --> this --> to
 			assert (this.routes.containsKey(from) || prcb.isSafe(from));
 			assert (this.routes.containsKey(to) || prcb.isSafe(to));
-			this.routes.put(from, new Route(null, from));
-			this.routes.put(to, new Route(null, to));
+			if (!this.routes.containsKey(from))
+				this.routes.put(from, new ArrayList<Route>());
+			if (!this.routes.containsKey(to))
+				this.routes.put(to, new ArrayList<Route>());
 
-		} else if (this.node == from) {
+			this.routes.get(from).add(new Route(null, from));
+			this.routes.get(to).add(new Route(null, to));
+
+		} else if (this.node == from && mediator != null) {
+			// #D this -> mediator -> to
 			SprayWithRouting other = ((WholePRCcast) mediator.getProtocol(WholePRCcast.PID)).swr;
-
 			assert (other.routes.routes.containsKey(this.node) || this.routes.containsKey(mediator)
 					|| prcb.isSafe(mediator));
-			this.routes.put(to, new Route(mediator, to));
+			if (!this.routes.containsKey(to))
+				this.routes.put(to, new ArrayList<Route>());
 
-		} else if (this.node == to) {
+			this.routes.get(to).add(new Route(mediator, to));
+
+		} else if (this.node == to && mediator != null) {
+			// #E from -> mediator -> this
 			SprayWithRouting other = ((WholePRCcast) mediator.getProtocol(WholePRCcast.PID)).swr;
 			assert (other.routes.routes.containsKey(this.node) || this.routes.containsKey(mediator)
 					|| prcb.isSafe(mediator));
-			this.routes.put(from, new Route(mediator, from));
+			if (!this.routes.containsKey(from))
+				this.routes.put(from, new ArrayList<Route>());
+
+			this.routes.get(from).add(new Route(mediator, from));
+		} else {
+			assert (false); // ugly ! !! !! :3
 		}
 		this.upKeep();
 	}
 
 	private void upKeep() {
 		// Integer retainingTime = this.retainingTime;
-		Integer retainingTime = ((int) (((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID)))
-				.getLatency(null, null)) * this.multiplicativeFactorForRetainingRoute);
+		Integer retainingTime = 1
+				+ ((int) (((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID)))
+						.getLatency(null, null)) * this.multiplicativeFactorForRetainingRoute);
 
-		for (Node n : new HashSet<Node>(routes.keySet())) {
-			Route r = this.routes.get(n);
-			if (r.timestamp < CommonState.getIntTime() - retainingTime) {
-				this.routes.remove(n);
+		for (Node n : new HashSet<Node>(this.routes.keySet())) {
+			for (Route r : new ArrayList<Route>(this.routes.get(n))) {
+				if (r.timestamp < CommonState.getIntTime() - retainingTime) {
+					this.routes.get(n).remove(r);
+				}
 			}
+			if (this.routes.get(n).isEmpty())
+				this.routes.remove(n);
 		}
 	}
 
@@ -82,22 +112,31 @@ public class Routes {
 
 		assert (this.hasRoute(to));
 
-		Route r = this.routes.get(to);
-		if (r.isUsingMediator()) {
-			return r.mediator; // forward
-		} else {
-			return to; // direct
+		for (Route r : this.routes.get(to)) {
+			if (!r.isUsingMediator()) {
+				return to; // direct
+			}
 		}
+
+		for (Route r : this.routes.get(to)) {
+			if (r.isUsingMediator()) {
+				return r.mediator; // forward
+			}
+		}
+
+		return null;
 	}
 
 	public Set<Node> inUse() {
 		this.upKeep();
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.routes.keySet()) {
-			if (this.routes.get(n).isUsingMediator()) {
-				result.add(this.routes.get(n).mediator);
-			} else {
-				result.add(n);
+			for (Route r : this.routes.get(n)) {
+				if (r.isUsingMediator()) {
+					result.add(r.mediator);
+				} else {
+					result.add(n);
+				}
 			}
 		}
 		return result;

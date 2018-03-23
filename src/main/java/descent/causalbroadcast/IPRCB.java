@@ -1,10 +1,11 @@
 package descent.causalbroadcast;
 
+import descent.causalbroadcast.routingbispray.MConnectTo;
 import peersim.core.Node;
 
 public interface IPRCB {
 
-	public void open(Node to, boolean bypassSafety);
+	public void open(MConnectTo m, boolean bypassSafety);
 
 	public boolean isSafe(Node neighbor);
 

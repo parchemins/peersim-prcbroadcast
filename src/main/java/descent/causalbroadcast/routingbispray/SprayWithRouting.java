@@ -8,6 +8,7 @@ import org.apache.commons.collections4.bag.HashBag;
 
 import descent.causalbroadcast.IPRCB;
 import descent.causalbroadcast.WholePRCcast;
+import descent.causalbroadcast.messages.IMControlMessage;
 import descent.causalbroadcast.messages.MAlpha;
 import descent.causalbroadcast.messages.MBeta;
 import descent.causalbroadcast.messages.MBuffer;
@@ -64,6 +65,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			Integer qCounter = 0;
 			for (Node neighbor : sample) {
 				if (neighbor != this.node) {
+					System.out.println("from " + q.getID() + " -> " + neighbor.getID());
 					this.sendMConnectTo(q, neighbor, new MConnectTo(q, neighbor, this.node));
 					this.removeNeighbor(neighbor);
 				} else {
@@ -143,15 +145,15 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public IMessage onPeriodicCall(Node origin, IMessage message) {
-		Integer nbReferences = (Integer) message.getPayload();
+		MExchangeWith m = (MExchangeWith) message;
 
-		System.out.println("ON PERIODIC @" + this.node.getID() + ";; " + origin.getID() + " x" + nbReferences);
+		System.out.println("ON PERIODIC @" + this.node.getID() + ";; " + origin.getID() + " x" + m.nbReferences);
 		SprayWithRouting other = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
 
-		for (int i = 0; i < nbReferences; ++i)
+		for (int i = 0; i < m.nbReferences; ++i)
 			other.removeNeighbor(this.node);
-		for (int i = 0; i < nbReferences; ++i)
-			this.addNeighborTrySafeButIfNotFallbackToUnsafe(origin);
+		for (int i = 0; i < m.nbReferences; ++i)
+			this.addNeighborTrySafeButIfNotFallbackToUnsafe(m);
 
 		HashBag<Node> sample = this._getSample(null);
 
@@ -222,30 +224,34 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		WholePRCcast other = (WholePRCcast) peer.getProtocol(WholePRCcast.PID);
 		boolean isNew = this.addNeighbor(peer);
 		assert (isNew);
-		this.prcb.open(peer, true); // from -- safe -> to
-		other.prcb.open(this.node, true); // to -- safe -> from
+		// from -- safe -> to
+		this.prcb.open(new MConnectTo(this.node, null, peer), true);
+		// to -- safe -> from
+		other.prcb.open(new MConnectTo(this.node, null, peer), true);
 		return isNew; // (TODO) maybe more meaningful return value
 	}
 
-	public boolean addNeighborUnsafe(Node peer) {
-		boolean isNew = this.addNeighbor(peer);
+	public boolean addNeighborUnsafe(MConnectTo m) {
+		boolean isNew = this.addNeighbor(m.to);
 		// last part of condition is a cheat to ensure that only one
 		// safety checking run at a time. Without it, the protocol is more
 		// complex to handle concurrent adds.
-		if (isNew && !this.prcb.isStillChecking(peer) && !this.prcb.isSafe(peer)) {
-			this.prcb.open(peer, false);
+		if (isNew && !this.prcb.isStillChecking(m.to) && !this.prcb.isSafe(m.to)) {
+			this.prcb.open(m, false);
 		}
 		return isNew; // (TODO) maybe more meaningful return value
 	}
 
-	public boolean addNeighborTrySafeButIfNotFallbackToUnsafe(Node peer) {
-		WholePRCcast other = (WholePRCcast) peer.getProtocol(WholePRCcast.PID);
-		boolean isNew = this.addNeighbor(peer);
+	public boolean addNeighborTrySafeButIfNotFallbackToUnsafe(MExchangeWith m) {
+		WholePRCcast other = (WholePRCcast) m.to.getProtocol(WholePRCcast.PID);
+		boolean isNew = this.addNeighbor(m.to);
 		boolean isSafe = false;
-		if (isNew && !this.prcb.isStillChecking(peer) && !this.prcb.isSafe(peer)) {
+		if (isNew && !this.prcb.isStillChecking(m.to) && !this.prcb.isSafe(m.to)) {
 			// ensure that no concurrent adds are performed
-			this.prcb.open(peer, true); // from -- safe -> to
-			other.prcb.open(this.node, true); // to -- safe -> from
+			// from -- safe -> to
+			this.prcb.open(new MConnectTo(m.from, null, m.to), true);
+			// to -- safe -> from
+			other.prcb.open(new MConnectTo(m.from, null, m.to), true);
 			isSafe = true;
 		} else {
 			// let the safety check run
@@ -255,9 +261,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public boolean removeNeighbor(Node peer) {
-		if (this.node.getID() == 706) {
-			System.out.println("REM " + peer.getID());
-		}
 		boolean contained = this.outview.contains(peer);
 		SprayWithRouting other = ((WholePRCcast) peer.getProtocol(WholePRCcast.PID)).swr;
 
@@ -284,16 +287,25 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #1 mark nodes as currently used
 		this.addRoute(from, this.node, to);
 		// #2 send the message
-		this._sendControlMessage(from, m, "connect to");
+		this._sendControlMessage(from, m);
 	}
 
-	public void receiveMConnectTo(Node from, Node mediator, Node to) {
-		this.addRoute(from, mediator, to);
+	public void receiveMConnectTo(MConnectTo m) {
+		assert (m.from == this.node);
 
-		if (mediator == null) {
+		this.addRoute(m.from, m.mediator, m.to);
+
+		if (m.mediator == null) {
+			if (this.node.getID() == 45)
+				System.out.println("A");
 			this.addNeighborTrySafeButIfNotFallbackToUnsafe(to);
 		} else {
-			this.addNeighborUnsafe(to);
+			if (this.node.getID() == 45) {
+				System.out.println("B -> " + to.getID());
+				if (m.mediator == null)
+					System.out.println("mia");
+			}
+			this.addNeighborUnsafe(m);
 		}
 	}
 
@@ -301,18 +313,20 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		SprayWithRouting other = ((WholePRCcast) dest.getProtocol(WholePRCcast.PID)).swr;
 		assert (this.outview.contains(dest) && other.inview.contains(this.node));
 		this.addRoute(dest, null, this.node);
-		this._sendControlMessage(dest, new MExchangeWith(dest, this.node, qCounter), "exchange with");
+		this._sendControlMessage(dest, new MExchangeWith(dest, this.node, qCounter));
 	}
 
-	public void receiveMExchangeWith(Node origin, MExchangeWith message) {
-		SprayWithRouting other = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
-		if (!this.inview.contains(origin)) {
-			System.out.println("@" + this.node.getID() + " ;; " + origin.getID());
+	public void receiveMExchangeWith(MExchangeWith m) {
+		assert (m.from == this.node);
+
+		SprayWithRouting other = ((WholePRCcast) m.to.getProtocol(WholePRCcast.PID)).swr;
+		if (!this.inview.contains(m.to)) {
+			System.out.println("@" + this.node.getID() + " ;; " + m.to.getID());
 		}
-		assert (this.inview.contains(origin));// ||
-												// other.routes.hasRoute(this.node));
-		this.addRoute(this.node, null, origin);
-		this.onPeriodicCall(origin, message);
+		assert (this.inview.contains(m.to));// ||
+											// other.routes.hasRoute(this.node));
+		this.addRoute(this.node, null, m.to);
+		this.onPeriodicCall(m.to, m);
 	}
 
 	public void addRoute(Node from, Node mediator, Node to) {
@@ -327,37 +341,41 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	// from: process A; to: process B; A -> alpha -> B
 	public void sendAlpha(Node from, Node to) {
 		Node mediator = null;
+
+		System.out.println("@" + this.node.getID() + "; f " + from.getID() + "; t " + to.getID());
 		if (this.node != from && this.node != to) {
+			System.out.println("meow");
 			mediator = this.node; // ugly
 		}
-		this._sendControlMessage(to, new MAlpha(from, to, mediator), "alpha");
+		this._sendControlMessage(to, new MAlpha(from, mediator, to));
 	}
 
 	// from: process A; to: process B; B -> beta -> A
-	public void sendBeta(Node from, Node to) {
-		this._sendControlMessage(from, new MBeta(from, to), "beta");
+	public void sendBeta(MAlpha m) {
+		this._sendControlMessage(m.from, new MBeta(m.from, m.mediator, m.to));
 	}
 
 	// from: process A; to: process B; A -> pi -> B
-	public void sendPi(Node from, Node to) {
-		this._sendControlMessage(to, new MPi(from, to), "pi");
+	public void sendPi(MBeta m) {
+		this._sendControlMessage(m.to, new MPi(m.from, m.mediator, m.to));
 	}
 
 	// from: process A; to: process B; B -> rho -> A
-	public void sendRho(Node from, Node to) {
-		this._sendControlMessage(from, new MRho(from, to), "rho");
+	public void sendRho(MPi m) {
+		this._sendControlMessage(m.from, new MRho(m.from, m.mediator, m.to));
 	}
 
-	private void _sendControlMessage(Node target, Object m, String info) {
-		boolean route = this.routes.hasRoute(target);
-		boolean direct = this.prcb.isSafe(target);
+	public void _sendControlMessage(Node dest, IMControlMessage m) {
+		boolean route = this.routes.hasRoute(dest);
+		boolean direct = this.prcb.isSafe(dest);
 
+		System.out.println(direct);
 		assert (route || direct); // no route nor forward
 
 		if (direct) {
-			this._send(target, m); // forward
+			this._send(dest, m); // forward
 		} else if (route) {
-			this._send(this.routes.getRoute(target), m); // route
+			this._send(this.routes.getRoute(dest), m); // route
 		}
 	}
 

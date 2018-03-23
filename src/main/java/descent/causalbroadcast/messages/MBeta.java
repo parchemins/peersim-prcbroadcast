@@ -11,10 +11,12 @@ public class MBeta implements IMControlMessage {
 
 	public final Node from;
 	public final Node to;
+	public final Node mediator;
 
-	public MBeta(Node from, Node to) {
+	public MBeta(Node from, Node mediator, Node to) {
 		this.from = from;
 		this.to = to;
+		this.mediator = mediator;
 	}
 
 	public Node getFrom() {

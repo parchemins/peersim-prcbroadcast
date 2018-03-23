@@ -3,6 +3,9 @@ package descent.causalbroadcast.routingbispray;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import descent.causalbroadcast.messages.MAlpha;
+import descent.causalbroadcast.messages.MBeta;
+import descent.causalbroadcast.messages.MPi;
 import descent.causalbroadcast.messages.MReliableBroadcast;
 import peersim.core.Node;
 
@@ -12,13 +15,13 @@ import peersim.core.Node;
  */
 public interface IRoutingService {
 
-	public void sendAlpha(Node from, Node to);
+	public void sendAlpha(MConnectTo m);
 
-	public void sendBeta(Node from, Node to);
+	public void sendBeta(MAlpha m);
 
-	public void sendPi(Node from, Node to);
+	public void sendPi(MBeta m);
 
-	public void sendRho(Node from, Node to);
+	public void sendRho(MPi m);
 
 	public void sendBuffer(Node dest, Node from, Node to, ArrayList<MReliableBroadcast> buffer);
 

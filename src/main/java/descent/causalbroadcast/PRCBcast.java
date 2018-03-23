@@ -5,9 +5,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 
+import descent.causalbroadcast.messages.MAlpha;
+import descent.causalbroadcast.messages.MBeta;
+import descent.causalbroadcast.messages.MPi;
 import descent.causalbroadcast.messages.MRegularBroadcast;
 import descent.causalbroadcast.messages.MReliableBroadcast;
+import descent.causalbroadcast.messages.MRho;
 import descent.causalbroadcast.routingbispray.IRoutingService;
+import descent.causalbroadcast.routingbispray.MConnectTo;
 import descent.rps.IMessage;
 import peersim.core.Node;
 
@@ -60,17 +65,17 @@ public class PRCBcast implements IPRCB {
 	 * @param to
 	 *            The new neighbor.
 	 */
-	public void open(Node to, boolean bypassSafety) {
-		WholePRCcast other = (WholePRCcast) to.getProtocol(WholePRCcast.PID);
+	public void open(MConnectTo m, boolean bypassSafety) {
+		WholePRCcast other = (WholePRCcast) m.to.getProtocol(WholePRCcast.PID);
 		assert (!other.prcb.isYetToBeSafe(this.node));
-		assert (!this.safe.contains(to) && !this.unsafe.contains(to));
+		assert (!this.safe.contains(m.to) && !this.unsafe.contains(m.to));
 		if (bypassSafety) {
 			// #A peer-sampling knows the neighbor is safe by design
-			this.safe.add(to);
+			this.safe.add(m.to);
 		} else {
 			// #B otherwise, safety check starts
-			this.unsafe.add(to);
-			this.irs.sendAlpha(this.node, to);
+			this.unsafe.add(m.to);
+			this.irs.sendAlpha(m);
 		}
 	}
 
@@ -88,16 +93,16 @@ public class PRCBcast implements IPRCB {
 	 * @param to
 	 *            to = this.node
 	 */
-	public void receiveAlpha(Node from, Node to) {
-		assert (!this.safe.contains(from) && !this.unsafe.contains(from));
+	public void receiveAlpha(MAlpha m) {
+		assert (!this.safe.contains(m.from) && !this.unsafe.contains(m.from));
 
-		this.unsafe.add(from);
+		this.unsafe.add(m.from);
 
-		this.buffersAlpha.put(from, new ArrayList<MReliableBroadcast>());
-		this.buffersPi.put(from, new ArrayList<MReliableBroadcast>());
-		this.receiptsOfPi.put(from, false);
+		this.buffersAlpha.put(m.from, new ArrayList<MReliableBroadcast>());
+		this.buffersPi.put(m.from, new ArrayList<MReliableBroadcast>());
+		this.receiptsOfPi.put(m.from, false);
 
-		this.irs.sendBeta(from, to);
+		this.irs.sendBeta(m);
 	}
 
 	/**
@@ -108,13 +113,13 @@ public class PRCBcast implements IPRCB {
 	 * @param to
 	 *            The node we add in our out-view.
 	 */
-	public void receiveBeta(Node from, Node to) {
-		assert (!this.safe.contains(to) && this.unsafe.contains(to));
+	public void receiveBeta(MBeta m) {
+		assert (!this.safe.contains(m.to) && this.unsafe.contains(m.to));
 
-		this.buffersAlpha.put(to, new ArrayList<MReliableBroadcast>());
-		this.buffersPi.put(to, new ArrayList<MReliableBroadcast>());
-		this.receiptsOfPi.put(to, false);
-		this.irs.sendPi(from, to);
+		this.buffersAlpha.put(m.to, new ArrayList<MReliableBroadcast>());
+		this.buffersPi.put(m.to, new ArrayList<MReliableBroadcast>());
+		this.receiptsOfPi.put(m.to, false);
+		this.irs.sendPi(m);
 	}
 
 	/**
@@ -125,11 +130,11 @@ public class PRCBcast implements IPRCB {
 	 * @param to
 	 *            to = this.node
 	 */
-	public void receivePi(Node from, Node to) {
-		assert (!this.safe.contains(from) && this.unsafe.contains(from));
+	public void receivePi(MPi m) {
+		assert (!this.safe.contains(m.from) && this.unsafe.contains(m.from));
 
-		this.receiptsOfPi.put(from, true);
-		this.irs.sendRho(from, to);
+		this.receiptsOfPi.put(m.from, true);
+		this.irs.sendRho(m);
 	}
 
 	/**
@@ -140,19 +145,19 @@ public class PRCBcast implements IPRCB {
 	 * @param to
 	 *            The node that we add as neighbor.
 	 */
-	public void receiveRho(Node from, Node to) {
-		assert (!this.safe.contains(to) && this.unsafe.contains(to));
+	public void receiveRho(MRho m) {
+		assert (!this.safe.contains(m.to) && this.unsafe.contains(m.to));
 
 		if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
 			// #A continue protocol
-			this.receiptsOfPi.put(to, true);
-			this.irs.sendBuffer(to, from, to, this.buffersAlpha.get(to));
+			this.receiptsOfPi.put(m.to, true);
+			this.irs.sendBuffer(m.to, m.from, m.to, this.buffersAlpha.get(m.to));
 			// safe "from"->"to", not safe on receipt : no clean yet
-			this.unsafe.remove(to);
-			this.safe.add(to);
+			this.unsafe.remove(m.to);
+			this.safe.add(m.to);
 		} else {
 			// #B it 's enough for directional
-			this.clean(to);
+			this.clean(m.to);
 		}
 	}
 

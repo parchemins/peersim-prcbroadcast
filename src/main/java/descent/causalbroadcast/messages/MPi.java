@@ -11,10 +11,12 @@ public class MPi implements IMControlMessage {
 
 	public final Node from;
 	public final Node to;
+	public final Node mediator;
 
-	public MPi(Node from, Node to) {
+	public MPi(Node from, Node mediator, Node to) {
 		this.from = from;
 		this.to = to;
+		this.mediator = mediator;
 	}
 
 	public Node getFrom() {

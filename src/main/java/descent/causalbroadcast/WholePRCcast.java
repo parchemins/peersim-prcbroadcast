@@ -56,13 +56,11 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		// Give the message to the proper sub-protocol
 		if (message instanceof MExchangeWith) {
 			MExchangeWith m = (MExchangeWith) message;
-			assert (m.from == this.prcb.node);
-			this.swr.receiveMExchangeWith(m.to, m);
+			this.swr.receiveMExchangeWith(m);
 
 		} else if (message instanceof MConnectTo) {
 			MConnectTo m = (MConnectTo) message;
-			assert (m.from == this.prcb.node);
-			this.swr.receiveMConnectTo(m.from, m.mediator, m.to);
+			this.swr.receiveMConnectTo(m);
 
 		} else if (message instanceof IMControlMessage) {
 			IMControlMessage imcm = (IMControlMessage) message;
@@ -71,14 +69,18 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 				// receiver
 				if (message instanceof MAlpha) {
 					MAlpha m = (MAlpha) message;
-					this.swr.receiveMConnectFrom(m.from, m.mediator, m.to);
-					this.prcb.receiveAlpha(imcm.getFrom(), imcm.getTo());
+					// (XXX) this.swr.receiveMConnectFrom(m.from, m.mediator,
+					// m.to);
+					this.prcb.receiveAlpha(m);
 				} else if (message instanceof MBeta) {
-					this.prcb.receiveBeta(imcm.getFrom(), imcm.getTo());
+					MBeta m = (MBeta) message;
+					this.prcb.receiveBeta(m);
 				} else if (message instanceof MPi) {
-					this.prcb.receivePi(imcm.getFrom(), imcm.getTo());
+					MPi m = (MPi) message;
+					this.prcb.receivePi(m);
 				} else if (message instanceof MRho) {
-					this.prcb.receiveRho(imcm.getFrom(), imcm.getTo());
+					MRho m = (MRho) message;
+					this.prcb.receiveRho(m);
 				} else if (message instanceof MBuffer) {
 					this.prcb.receiveBuffer(imcm.getFrom(), imcm.getTo(), ((MBuffer) message).messages);
 				}
@@ -89,15 +91,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 				// refresh the path (XXX) why is that needed
 				this.swr.addRoute(m.getFrom(), this.prcb.node, m.getTo());
 
-				if (message instanceof MAlpha) {
-					this.swr.sendAlpha(imcm.getFrom(), imcm.getTo());
-				} else if (message instanceof MBeta) {
-					this.swr.sendBeta(imcm.getFrom(), imcm.getTo());
-				} else if (message instanceof MPi) {
-					this.swr.sendPi(imcm.getFrom(), imcm.getTo());
-				} else if (message instanceof MRho) {
-					this.swr.sendRho(imcm.getFrom(), imcm.getTo());
-				}
+				this.swr._sendControlMessage(m.getReceiver(), m);
 			}
 
 		}
