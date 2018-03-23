@@ -92,8 +92,8 @@ public class Routes {
 
 	private void upKeep() {
 		// Integer retainingTime = this.retainingTime;
-		Integer retainingTime = 1
-				+ ((int) (((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID)))
+		Integer retainingTime = 
+				((int) (((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID)))
 						.getLatency(null, null)) * this.multiplicativeFactorForRetainingRoute);
 
 		for (Node n : new HashSet<Node>(this.routes.keySet())) {

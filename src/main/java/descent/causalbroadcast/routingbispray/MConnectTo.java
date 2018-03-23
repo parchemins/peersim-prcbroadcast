@@ -22,6 +22,10 @@ public class MConnectTo implements IMControlMessage {
 		this.mediator = mediator;
 	}
 
+	public Node getMediator() {
+		return this.mediator;
+	}
+	
 	public boolean isDirect() {
 		return this.mediator == null;
 	}

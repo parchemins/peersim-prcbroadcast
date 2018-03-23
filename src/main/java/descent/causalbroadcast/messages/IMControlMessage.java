@@ -16,4 +16,5 @@ public interface IMControlMessage {
 
 	public Node getReceiver();
 
+	public Node getMediator();
 }

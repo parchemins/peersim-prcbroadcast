@@ -66,12 +66,14 @@ public class PRCBcast implements IPRCB {
 	 *            The new neighbor.
 	 */
 	public void open(MConnectTo m, boolean bypassSafety) {
-		WholePRCcast other = (WholePRCcast) m.to.getProtocol(WholePRCcast.PID);
-		assert (!other.prcb.isYetToBeSafe(this.node));
-		assert (!this.safe.contains(m.to) && !this.unsafe.contains(m.to));
+		Node other = (m.from == this.node) ? m.to : m.from;
+		assert (!this.isStillChecking(other));
+		assert (!this.safe.contains(other));
+		assert (!this.unsafe.contains(other));
 		if (bypassSafety) {
+			assert (m.mediator == null);
 			// #A peer-sampling knows the neighbor is safe by design
-			this.safe.add(m.to);
+			this.safe.add(other);
 		} else {
 			// #B otherwise, safety check starts
 			this.unsafe.add(m.to);

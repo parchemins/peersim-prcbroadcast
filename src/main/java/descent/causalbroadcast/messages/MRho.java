@@ -19,6 +19,10 @@ public class MRho implements IMControlMessage {
 		this.mediator = mediator;
 	}
 
+	public Node getMediator() {
+		return this.mediator;
+	}
+
 	public Node getFrom() {
 		return this.from;
 	}

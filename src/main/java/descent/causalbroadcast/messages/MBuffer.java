@@ -24,6 +24,10 @@ public class MBuffer implements IMControlMessage {
 		this.receiver = receiver;
 		this.messages = messages;
 	}
+	
+	public Node getMediator() {
+		return null;
+	}
 
 	public Node getFrom() {
 		return this.from;

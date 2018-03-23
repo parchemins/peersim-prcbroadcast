@@ -21,6 +21,9 @@ public class PLocalSpace implements IObserverProgram {
 	}
 
 	public void tick(long currentTick, DictGraph observer) {
+		ArrayList<Double> outview = new ArrayList<Double>();
+		ArrayList<Double> inview = new ArrayList<Double>();
+
 		ArrayList<Double> unsafe = new ArrayList<Double>();
 		ArrayList<Double> safe = new ArrayList<Double>();
 
@@ -31,6 +34,9 @@ public class PLocalSpace implements IObserverProgram {
 		for (Node n : CDynamicNetwork.networks.get(0)) {
 			PRCBcast prcb = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).prcb;
 			SprayWithRouting swr = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).swr;
+
+			outview.add((double) swr.outview.size());
+			inview.add((double) swr.inview.size());
 
 			unsafe.add((double) prcb.unsafe.size());
 			safe.add((double) prcb.safe.size());
@@ -48,12 +54,15 @@ public class PLocalSpace implements IObserverProgram {
 		Long latency = ((Transport) theOne.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).getLatency(null,
 				null);
 
+		Stats sOutview = Stats.getFromSmall(outview);
+		Stats sInview = Stats.getFromSmall(inview);
+
 		Stats sUnsafe = Stats.getFromSmall(unsafe);
 		Stats sRoutes = Stats.getFromSmall(routes);
 		Stats sSafe = Stats.getFromSmall(safe);
 		Stats sDuplicates = Stats.getFromSmall(duplicatesRouteSafe);
-		System.out.println("PLS. " + latency + " " + sUnsafe.mean + "  " + sSafe.mean + "  " + sRoutes.mean + " "
-				+ sDuplicates.mean);
+		System.out.println("PLS. " + latency + " (" + sOutview.mean + "; " + sInview.mean + ") " + sUnsafe.mean + "  "
+				+ sSafe.mean + "  " + sRoutes.mean + " " + sDuplicates.mean);
 	}
 
 	public void onLastTick(DictGraph observer) {

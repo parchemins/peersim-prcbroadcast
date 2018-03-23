@@ -20,6 +20,10 @@ public class MExchangeWith implements IMessage, IMControlMessage {
 		this.nbReferences = nbReferences;
 	}
 
+	public Node getMediator() {
+		return null;
+	}
+
 	public Integer getPayload() {
 		return this.nbReferences;
 	}

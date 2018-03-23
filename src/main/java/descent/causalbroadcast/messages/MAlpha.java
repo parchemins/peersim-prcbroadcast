@@ -33,4 +33,8 @@ public class MAlpha implements IMControlMessage {
 	public Node getReceiver() {
 		return this.to;
 	}
+
+	public Node getMediator() {
+		return this.mediator;
+	}
 }

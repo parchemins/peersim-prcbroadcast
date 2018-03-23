@@ -12,21 +12,21 @@ SHUFFLE_PERIOD CYCLE
 NB_MESSAGES_PER_SEC 0
 P_MESSAGE NB_MESSAGES_PER_SEC/CYCLE/SIZE
 
-random.seed 1237560
+random.seed 1
 network.size SIZE
 simulation.endtime CYCLES*CYCLE
 simulation.logtime CYCLE
 
 ################### protocols #######################
-protocol.urt UniformRandomTransport
-protocol.urt.mindelay MIN_DELAY
-protocol.urt.maxdelay MAX_DELAY
-#protocol.urt descent.transport.IncreasingLatencyTransport
-#protocol.urt.min 0
-#protocol.urt.inc 10
-#protocol.urt.from 25*CYCLE
-#protocol.urt.stop 50*CYCLE
-#protocol.urt.step CYCLE/10
+# protocol.urt UniformRandomTransport
+# protocol.urt.mindelay MIN_DELAY
+# protocol.urt.maxdelay MAX_DELAY
+protocol.urt descent.transport.IncreasingLatencyTransport
+protocol.urt.min 0
+protocol.urt.inc 10
+protocol.urt.from 25*CYCLE
+protocol.urt.stop 50*CYCLE
+protocol.urt.step CYCLE/10
 
 protocol.prc descent.causalbroadcast.WholePRCcast
 protocol.prc.pid prc

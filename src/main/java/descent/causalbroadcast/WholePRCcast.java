@@ -46,8 +46,8 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	}
 
 	public void nextCycle(Node node, int protocolId) {
-		if (CommonState.getIntTime() < WholePRCcast.STOP)
-			this.swr.periodicCall();
+		// if (CommonState.getIntTime() < WholePRCcast.STOP)
+		// this.swr.periodicCall();
 	}
 
 	public void processEvent(Node node, int protocolId, Object message) {
@@ -56,10 +56,12 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		// Give the message to the proper sub-protocol
 		if (message instanceof MExchangeWith) {
 			MExchangeWith m = (MExchangeWith) message;
+			this.swr.addRoute(m.from, null, m.to);
 			this.swr.receiveMExchangeWith(m);
 
 		} else if (message instanceof MConnectTo) {
 			MConnectTo m = (MConnectTo) message;
+			this.swr.addRoute(m.from, m.mediator, m.to);
 			this.swr.receiveMConnectTo(m);
 
 		} else if (message instanceof IMControlMessage) {
@@ -71,6 +73,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 					MAlpha m = (MAlpha) message;
 					// (XXX) this.swr.receiveMConnectFrom(m.from, m.mediator,
 					// m.to);
+					this.swr.addRoute(m.from, m.mediator, m.to);
 					this.prcb.receiveAlpha(m);
 				} else if (message instanceof MBeta) {
 					MBeta m = (MBeta) message;
@@ -88,7 +91,8 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 			} else {
 				// mediator
 				IMControlMessage m = (IMControlMessage) message;
-				// refresh the path (XXX) why is that needed
+				// (XXX) refreshing route should not be useful
+
 				this.swr.addRoute(m.getFrom(), this.prcb.node, m.getTo());
 
 				this.swr._sendControlMessage(m.getReceiver(), m);
