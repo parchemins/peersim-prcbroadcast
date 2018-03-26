@@ -285,6 +285,7 @@ public class PRCBcast implements IPRCB {
 		}
 		// #2 if it has, we purge the specific entry
 		if (hasReceived) {
+			System.out.println("@"+ this.node.getID() + " from " + from.getID());
 			this.expected.get(from).remove(from);
 			if (this.expected.get(from).size() == 0) {
 				this.expected.remove(from);

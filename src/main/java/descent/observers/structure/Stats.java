@@ -21,7 +21,7 @@ public class Stats {
 
 	@Override
 	public String toString() {
-		return this.mean + " " + this.median + " " + this.min + " " + this.max + " " + this.stdDev;
+		return this.mean + " [" + this.min + " " + this.median + " " + this.max + "] " + this.stdDev;
 	}
 
 	/**

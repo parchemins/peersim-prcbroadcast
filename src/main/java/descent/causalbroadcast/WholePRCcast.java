@@ -87,12 +87,10 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 				}
 
 			} else {
-				// mediator
+				// mediator forwards
 				IMControlMessage m = (IMControlMessage) message;
-				// (XXX) refreshing route should not be useful
-
-				this.swr.addRoute(m.getFrom(), this.prcb.node, m.getTo());
-
+				// refreshing route is not necessary
+				// this.swr.addRoute(m.getFrom(), this.prcb.node, m.getTo());				
 				this.swr._sendControlMessage(m.getReceiver(), m);
 			}
 

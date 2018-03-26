@@ -39,6 +39,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	////////////////////////////////////////////////////////////////////////////
 
+	private Integer numberOfControlMessagesSentSinceLastCheck = 0;
+
+	////////////////////////////////////////////////////////////////////////////
+
 	public SprayWithRouting(IPRCB prcb) {
 		this.prcb = prcb;
 
@@ -55,7 +59,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		Node q = this._getOldest();
 		if (q != null) {
 
-			// System.out.println("PERIODIC @" + this.node.getID() + "; " + q.getID());
+			// System.out.println("PERIODIC @" + this.node.getID() + "; " +
+			// q.getID());
 			// #2 prepare a sample
 			HashBag<Node> sample = this._getSample(q);
 
@@ -65,7 +70,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			Integer qCounter = 0;
 			for (Node neighbor : sample) {
 				if (neighbor != this.node) {
-					// System.out.println("from " + q.getID() + " -> " + neighbor.getID());
+					// System.out.println("from " + q.getID() + " -> " +
+					// neighbor.getID());
 					this.sendMConnectTo(q, neighbor);
 					this.removeNeighbor(neighbor);
 				} else {
@@ -146,7 +152,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public IMessage onPeriodicCall(Node origin, IMessage message) {
 		MExchangeWith m = (MExchangeWith) message;
 
-		// System.out.println("ON PERIODIC @" + this.node.getID() + ";; " + origin.getID() + " x" + m.nbReferences);
+		// System.out.println("ON PERIODIC @" + this.node.getID() + ";; " +
+		// origin.getID() + " x" + m.nbReferences);
 		SprayWithRouting other = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
 
 		for (int i = 0; i < m.nbReferences; ++i)
@@ -341,14 +348,16 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void _sendControlMessage(Node dest, IMControlMessage m) {
+		++this.numberOfControlMessagesSentSinceLastCheck;
+
 		if (m.getMediator() != null && m.getMediator() != this.node) {
-			assert(this.routes.inUse().contains(m.getMediator()));
+			assert (this.routes.inUse().contains(m.getMediator()));
 			this._send(m.getMediator(), m);
 		} else if (m.getMediator() != null && m.getMediator() == this.node) {
-			assert(this.routes.inUse().contains(m.getReceiver()));
+			assert (this.routes.inUse().contains(m.getReceiver()));
 			this._send(m.getReceiver(), m);
 		} else if (m.getMediator() == null) {
-			assert(this.routes.inUse().contains(dest));
+			assert (this.routes.inUse().contains(dest));
 			this._send(dest, m);
 		}
 	}
@@ -425,8 +434,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 				result.add(n);
 		}
 		for (Node n : this.routes.inUse()) {
-			// inuse should not have unsafe links
-			assert (this.prcb.isSafe(n));
 			result.add(n);
 		}
 		return result;
@@ -465,6 +472,14 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	@Override
 	protected boolean pFail(List<Node> path) {
 		return false;
+	}
+
+	////// FOR PEERSIM OBSERVER
+
+	public Integer getNumberOfControlMessagesSentSinceLastCheck() {
+		Integer result = this.numberOfControlMessagesSentSinceLastCheck;
+		this.numberOfControlMessagesSentSinceLastCheck = 0;
+		return result;
 	}
 
 }

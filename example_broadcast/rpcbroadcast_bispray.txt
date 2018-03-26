@@ -5,8 +5,8 @@ SIZE 1000
 CYCLES 60
 CYCLE 60000
 
-MIN_DELAY 100
-MAX_DELAY 100
+MIN_DELAY 1000
+MAX_DELAY 1000
 
 SHUFFLE_PERIOD CYCLE
 NB_MESSAGES_PER_SEC 0
@@ -18,15 +18,15 @@ simulation.endtime CYCLES*CYCLE
 simulation.logtime CYCLE
 
 ################### protocols #######################
-protocol.urt UniformRandomTransport
-protocol.urt.mindelay MIN_DELAY
-protocol.urt.maxdelay MAX_DELAY
-# protocol.urt descent.transport.IncreasingLatencyTransport
-# protocol.urt.min 0
-# protocol.urt.inc 10
-# protocol.urt.from 25*CYCLE
-# protocol.urt.stop 50*CYCLE
-# protocol.urt.step CYCLE/10
+# protocol.urt UniformRandomTransport
+# protocol.urt.mindelay MIN_DELAY
+# protocol.urt.maxdelay MAX_DELAY
+protocol.urt descent.transport.IncreasingLatencyTransport
+protocol.urt.min 0
+protocol.urt.inc 10
+protocol.urt.from 15*CYCLE
+protocol.urt.stop 40*CYCLE
+protocol.urt.step CYCLE/20
 
 protocol.prc descent.causalbroadcast.WholePRCcast
 protocol.prc.pid prc
@@ -50,6 +50,11 @@ control.o1.addingPerStep 1
 control.o1.startAdd 0
 control.o1.endAdd 100*1000
 
+control.o2 descent.controllers.CSendMessages
+control.o2.FINAL
+control.o2.step 100
+control.o2.messages 1
+
 ################### observers #######################
 control.0 descent.observers.structure.Observer
 control.0.program descent.observers.properties.PVarianceAndArcCount
@@ -64,4 +69,11 @@ control.1.FINAL
 control.1.step CYCLE/60
 control.1.from 100
 
+
+control.2 descent.observers.structure.Observer
+control.2.program descent.observers.PMessages
+control.2.protocol prc
+control.2.FINAL
+control.2.step CYCLE/60
+control.2.from 100
 
