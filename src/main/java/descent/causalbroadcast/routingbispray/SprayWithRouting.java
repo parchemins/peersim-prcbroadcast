@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.commons.collections4.bag.HashBag;
 
 import descent.causalbroadcast.IPRCB;
+import descent.causalbroadcast.PRCBcast;
 import descent.causalbroadcast.WholePRCcast;
 import descent.causalbroadcast.messages.IMControlMessage;
 import descent.causalbroadcast.messages.MAlpha;
@@ -217,8 +218,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		SprayWithRouting other = ((WholePRCcast) peer.getProtocol(WholePRCcast.PID)).swr;
 
 		// #1 quick consistency check
-		assert ((alreadyContained && other.inview.contains(this.node))
-				|| (!alreadyContained && !other.inview.contains(this.node)));
+		assert (((alreadyContained || this.routes.inUse().contains(peer)) && other.inview.contains(this.node))
+				|| (!alreadyContained && !this.routes.inUse().contains(peer) && !other.inview.contains(this.node)));
 
 		// #2 add in both directions
 		this.outview.addNeighbor(peer);
@@ -278,16 +279,35 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		assert ((contained && other.inview.contains(this.node)) || (!contained && !other.inview.contains(this.node)));
 		// #2 remove from outview and corresponding inview if need be
 		this.outview.removeNeighbor(peer);
-		if (!this.outview.contains(peer)) {
+		if (!this.outview.contains(peer) && !this.routes.inUse().contains(peer)) {
 			other.inview.remove(this.node);
 			if (!this.inview.contains(peer)) {
 				assert (!other.outview.contains(this.node));
+				assert (!other.routes.inUse().contains(this.node));
 				this.prcb.close(peer);
 				other.prcb.close(this.node);
 			}
 
 		}
 		return contained;
+	}
+
+	public void removedRoute(Route r) {
+		Node peer = (r.isUsingMediator()) ? r.mediator : r.dest;
+
+		SprayWithRouting other = ((WholePRCcast) peer.getProtocol(WholePRCcast.PID)).swr;
+		assert (other.inview.contains(this.node) || other.outview.contains(this.node));
+
+		if (!this.outview.contains(peer) && !this.routes.inUse().contains(peer)) {
+			other.inview.remove(this.node);
+			if (!this.inview.contains(peer)) {
+				assert (!other.outview.contains(this.node));
+				assert (!other.routes.inUse().contains(this.node));
+				this.prcb.close(peer);
+				other.prcb.close(this.node);
+			}
+
+		}
 	}
 
 	// CONTROL MESSAGES:
@@ -324,6 +344,34 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void addRoute(Node from, Node mediator, Node to) {
+		PRCBcast prcb = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).prcb;
+
+		if (mediator == null && this.node == from) {
+			// #A this --> to
+			SprayWithRouting other = ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
+			other.inview.add(this.node);
+		} else if (mediator == null && this.node == to) {
+			// #B from --> this
+			SprayWithRouting other = ((WholePRCcast) from.getProtocol(WholePRCcast.PID)).swr;
+			other.inview.add(this.node);
+
+		} else if (this.node == mediator) {
+			// #C from --> this --> to
+			SprayWithRouting otherF = ((WholePRCcast) from.getProtocol(WholePRCcast.PID)).swr;
+			otherF.inview.add(this.node);
+			SprayWithRouting otherT = ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
+			otherT.inview.add(this.node);
+		} else if (this.node == from && mediator != null) {
+			// #D this -> mediator -> to
+			SprayWithRouting other = ((WholePRCcast) mediator.getProtocol(WholePRCcast.PID)).swr;
+			other.inview.add(this.node);
+
+		} else if (this.node == to && mediator != null) {
+			// #E from -> mediator -> this
+			SprayWithRouting other = ((WholePRCcast) mediator.getProtocol(WholePRCcast.PID)).swr;
+			other.inview.add(this.node);
+
+		}
 		this.routes.addRoute(from, mediator, to);
 	}
 

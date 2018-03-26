@@ -3,12 +3,10 @@ package descent.causalbroadcast;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 
 import descent.causalbroadcast.messages.MAlpha;
 import descent.causalbroadcast.messages.MBeta;
 import descent.causalbroadcast.messages.MPi;
-import descent.causalbroadcast.messages.MRegularBroadcast;
 import descent.causalbroadcast.messages.MReliableBroadcast;
 import descent.causalbroadcast.messages.MRho;
 import descent.causalbroadcast.routingbispray.IRoutingService;
@@ -43,7 +41,7 @@ public class PRCBcast implements IPRCB {
 	public HashSet<Node> unsafe;
 	public HashSet<Node> safe;
 
-	////////////////
+	////////////////////////////////////////////////////////////////////////////
 
 	public PRCBcast() {
 		this.expected = new HashMap<Node, HashSet<MReliableBroadcast>>();
@@ -85,6 +83,7 @@ public class PRCBcast implements IPRCB {
 	public void close(Node to) {
 		assert (this.isSafe(to) || this.isYetToBeSafe(to));
 		this.clean(to);
+		this.expected.remove(to);
 		this.safe.remove(to);
 	}
 
@@ -208,7 +207,9 @@ public class PRCBcast implements IPRCB {
 		// including forward)
 		for (int i = 0; i < bufferBeta.size(); ++i) {
 			if (!this.buffersPi.get(origin).contains(bufferBeta.get(i))) {
-				this.receive(bufferBeta.get(i), origin);
+				if (this.node.getID()==92)
+					System.out.println("DELIVER " + bufferBeta.get(i).copy(origin).toString());
+				this.receive(bufferBeta.get(i).copy(origin), origin);
 			}
 		}
 		// #3 add expected messages to the link
@@ -242,7 +243,7 @@ public class PRCBcast implements IPRCB {
 	 *         control information.
 	 */
 	public MReliableBroadcast rbroadcast(IMessage message) {
-		MReliableBroadcast m = new MReliableBroadcast(this.node.getID(), ++this.counter, message);
+		MReliableBroadcast m = new MReliableBroadcast(this.node, this.node, ++this.counter, message);
 		this.receive(m, null);
 		return m;
 	}
@@ -257,7 +258,7 @@ public class PRCBcast implements IPRCB {
 	 */
 	public void receive(MReliableBroadcast m, Node from) {
 		if (!received(m, from)) {
-			this.irs.sendToOutview(m);
+			this.irs.sendToOutview(m.copy(this.node));
 			this.rDeliver(m);
 		}
 	}
@@ -274,36 +275,41 @@ public class PRCBcast implements IPRCB {
 	 * @return True if the message was already received, false otherwise.
 	 */
 	private boolean received(MReliableBroadcast m, Node from) {
-		boolean hasReceived = false;
-		Iterator<Node> keys = this.expected.keySet().iterator();
 		// #1 check if the message has been received previously
-		while (!hasReceived && keys.hasNext()) {
-			Node n = keys.next();
-			if (this.expected.get(n).contains(m)) {
-				hasReceived = true;
-			}
-		}
+		boolean hasReceived = this.isAlreadyReceived(m);
 		// #2 if it has, we purge the specific entry
 		if (hasReceived) {
-			System.out.println("@"+ this.node.getID() + " from " + from.getID());
-			this.expected.get(from).remove(from);
-			if (this.expected.get(from).size() == 0) {
+			assert (this.expected.get(from).remove(m)); // no double receipts
+			if (this.expected.get(from).isEmpty()) {
 				this.expected.remove(from);
 			}
 		} else {
 			// #3 if not, we expect to receive the message from all other
 			// neighbors
-			for (Node n : this.irs.getOutview()) {
-				if (!this.expected.containsKey(n)) {
-					this.expected.put(n, new HashSet<MReliableBroadcast>());
+			for (Node n : this.safe) {
+				// still processing "to Expect"
+				if (!this.buffersAlpha.containsKey(n)) {
+					if (!this.expected.containsKey(n)) {
+						this.expected.put(n, new HashSet<MReliableBroadcast>());
+					}
+					this.expected.get(n).add(m);
 				}
-				this.expected.get(n).add(m);
 			}
 			if (from != null) { // from is null when its the original sender
-				this.expected.get(from).remove(from);
+				System.out.println("@" + this.node.getID() + " ; " + from.getID() + " ; " + m.toString());
+				assert (this.expected.get(from).remove(m));
 			}
 		}
 		return hasReceived;
+	}
+
+	private boolean isAlreadyReceived(MReliableBroadcast m) {
+		for (Node n : this.expected.keySet()) {
+			if (this.expected.get(n).contains(m)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -315,7 +321,7 @@ public class PRCBcast implements IPRCB {
 	 */
 	public void rDeliver(MReliableBroadcast m) {
 		this.buffering(m);
-		this.cDeliver((MRegularBroadcast) m.getPayload());
+		this.cDeliver((IMessage) m.getPayload());
 	}
 
 	/**
@@ -324,7 +330,7 @@ public class PRCBcast implements IPRCB {
 	 * @param m
 	 *            The message delivered.
 	 */
-	public void cDeliver(MRegularBroadcast m) {
+	public void cDeliver(IMessage m) {
 		// nothing
 	}
 

@@ -85,10 +85,9 @@ public class Routes {
 		} else {
 			assert (false); // ugly ! !! !! :3
 		}
-		this.upKeep();
 	}
 
-	private void upKeep() {
+	public void upKeep() {
 		// Integer retainingTime = this.retainingTime;
 		Integer retainingTime = 
 				((int) (((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID)))
@@ -98,6 +97,8 @@ public class Routes {
 			for (Route r : new ArrayList<Route>(this.routes.get(n))) {
 				if (r.timestamp < CommonState.getIntTime() - retainingTime) {
 					this.routes.get(n).remove(r);
+					SprayWithRouting parent = ((WholePRCcast)this.node.getProtocol(WholePRCcast.PID)).swr;
+					parent.removedRoute(r);
 				}
 			}
 			if (this.routes.get(n).isEmpty())
@@ -106,8 +107,6 @@ public class Routes {
 	}
 
 	public Node getRoute(Node to) {
-		this.upKeep();
-
 		assert (this.hasRoute(to));
 
 		for (Route r : this.routes.get(to)) {
@@ -126,7 +125,6 @@ public class Routes {
 	}
 
 	public Set<Node> inUse() {
-		this.upKeep();
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.routes.keySet()) {
 			for (Route r : this.routes.get(n)) {
@@ -141,7 +139,6 @@ public class Routes {
 	}
 
 	public boolean hasRoute(Node to) {
-		this.upKeep();
 		return this.routes.containsKey(to);
 	}
 

@@ -5,6 +5,7 @@ import descent.causalbroadcast.messages.MAlpha;
 import descent.causalbroadcast.messages.MBeta;
 import descent.causalbroadcast.messages.MBuffer;
 import descent.causalbroadcast.messages.MPi;
+import descent.causalbroadcast.messages.MReliableBroadcast;
 import descent.causalbroadcast.messages.MRho;
 import descent.causalbroadcast.routingbispray.MConnectTo;
 import descent.causalbroadcast.routingbispray.MExchangeWith;
@@ -30,6 +31,8 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	public PRCBcast prcb;
 	public SprayWithRouting swr;
 
+	////////////////////////////////////////////////////////////////////////////
+
 	public WholePRCcast(String prefix) {
 		WholePRCcast.PID = Configuration.getPid(prefix + "." + WholePRCcast.PAR_PID);
 		WholePRCcast.STOP = Configuration.getInt(prefix + "." + WholePRCcast.PAR_STOP);
@@ -48,11 +51,25 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 	public void nextCycle(Node node, int protocolId) {
 		if (CommonState.getIntTime() < WholePRCcast.STOP)
 			this.swr.periodicCall();
+		this.swr.routes.setNode(node);
+		this.swr.routes.upKeep();
 	}
 
 	public void processEvent(Node node, int protocolId, Object message) {
+		this.swr.routes.upKeep();
+
 		// Give the message to the proper sub-protocol
-		if (message instanceof MExchangeWith) {
+		if (message instanceof MReliableBroadcast) {
+			// must check because message sent still travel
+			MReliableBroadcast m = (MReliableBroadcast) message;
+			if (this.swr.inview.contains(m.sender)) {
+					System.out.println("@" + this.prcb.node.getID() + " RECEIVED " + m.toString());
+				this.prcb.receive(m, m.sender);
+			} else {
+				System.out.println("TO DOUBLE CHECK");
+			}
+
+		} else if (message instanceof MExchangeWith) {
 			MExchangeWith m = (MExchangeWith) message;
 			this.swr.addRoute(m.from, null, m.to);
 			this.swr.receiveMExchangeWith(m);
@@ -69,8 +86,6 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 				// receiver
 				if (message instanceof MAlpha) {
 					MAlpha m = (MAlpha) message;
-					// (XXX) this.swr.receiveMConnectFrom(m.from, m.mediator,
-					// m.to);
 					this.swr.addRoute(m.from, m.mediator, m.to);
 					this.prcb.receiveAlpha(m);
 				} else if (message instanceof MBeta) {
@@ -90,7 +105,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 				// mediator forwards
 				IMControlMessage m = (IMControlMessage) message;
 				// refreshing route is not necessary
-				// this.swr.addRoute(m.getFrom(), this.prcb.node, m.getTo());				
+				// this.swr.addRoute(m.getFrom(), this.prcb.node, m.getTo());
 				this.swr._sendControlMessage(m.getReceiver(), m);
 			}
 
