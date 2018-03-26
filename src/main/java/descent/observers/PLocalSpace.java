@@ -1,7 +1,6 @@
 package descent.observers;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 
 import descent.causalbroadcast.PRCBcast;
 import descent.causalbroadcast.WholePRCcast;

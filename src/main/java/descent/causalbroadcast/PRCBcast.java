@@ -81,6 +81,8 @@ public class PRCBcast implements IPRCB {
 	}
 
 	public void close(Node to) {
+		assert (this.node != to);
+		System.out.println("@" + this.node.getID() + " CLOSE " + to.getID());
 		assert (this.isSafe(to) || this.isYetToBeSafe(to));
 		this.clean(to);
 		this.expected.remove(to);
@@ -207,7 +209,7 @@ public class PRCBcast implements IPRCB {
 		// including forward)
 		for (int i = 0; i < bufferBeta.size(); ++i) {
 			if (!this.buffersPi.get(origin).contains(bufferBeta.get(i))) {
-				if (this.node.getID()==92)
+				if (this.node.getID() == 48)
 					System.out.println("DELIVER " + bufferBeta.get(i).copy(origin).toString());
 				this.receive(bufferBeta.get(i).copy(origin), origin);
 			}
@@ -296,8 +298,10 @@ public class PRCBcast implements IPRCB {
 				}
 			}
 			if (from != null) { // from is null when its the original sender
-				System.out.println("@" + this.node.getID() + " ; " + from.getID() + " ; " + m.toString());
-				assert (this.expected.get(from).remove(m));
+				// System.out.println("@" + this.node.getID() + " ; " +
+				// from.getID() + " ; " + m.toString());
+				if (this.isSafe(from) && !this.buffersAlpha.containsKey(from))
+					assert (this.expected.get(from).remove(m));
 			}
 		}
 		return hasReceived;

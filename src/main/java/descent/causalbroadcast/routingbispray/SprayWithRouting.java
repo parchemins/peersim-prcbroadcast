@@ -120,7 +120,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #B discard currently used links and unsafe links
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
 			// same condition in getoldest, we filter candidates
-			WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
 			if (this.routes.inUse().contains(neighbor) || this.prcb.isStillChecking(neighbor)
 					|| !this.prcb.isSafe(neighbor)) {
 				clone.remove(neighbor);
@@ -223,6 +222,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 		// #2 add in both directions
 		this.outview.addNeighbor(peer);
+		// System.out.println("@" +other.node.getID() + " ADD INVIEW " +
+		// this.node.getID());
 		other.inview.add(this.node);
 
 		return !alreadyContained;
@@ -280,6 +281,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #2 remove from outview and corresponding inview if need be
 		this.outview.removeNeighbor(peer);
 		if (!this.outview.contains(peer) && !this.routes.inUse().contains(peer)) {
+			// (TODO) this code is similar as the one in remove route, factorize
+
+			// System.out.println("@"+other.node.getID()+ " REMOVE FROM INVIEW "
+			// + this.node.getID());
 			other.inview.remove(this.node);
 			if (!this.inview.contains(peer)) {
 				assert (!other.outview.contains(this.node));
@@ -299,6 +304,8 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		assert (other.inview.contains(this.node) || other.outview.contains(this.node));
 
 		if (!this.outview.contains(peer) && !this.routes.inUse().contains(peer)) {
+			// System.out.println("@"+other.node.getID()+ " REMOVE FROM INVIEW "
+			// + this.node.getID());
 			other.inview.remove(this.node);
 			if (!this.inview.contains(peer)) {
 				assert (!other.outview.contains(this.node));
@@ -344,8 +351,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	}
 
 	public void addRoute(Node from, Node mediator, Node to) {
-		PRCBcast prcb = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).prcb;
-
 		if (mediator == null && this.node == from) {
 			// #A this --> to
 			SprayWithRouting other = ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
@@ -361,16 +366,10 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			otherF.inview.add(this.node);
 			SprayWithRouting otherT = ((WholePRCcast) to.getProtocol(WholePRCcast.PID)).swr;
 			otherT.inview.add(this.node);
-		} else if (this.node == from && mediator != null) {
-			// #D this -> mediator -> to
+		} else if (mediator != null) {
+			// #D this -> mediator -> to || from -> mediator -> this
 			SprayWithRouting other = ((WholePRCcast) mediator.getProtocol(WholePRCcast.PID)).swr;
 			other.inview.add(this.node);
-
-		} else if (this.node == to && mediator != null) {
-			// #E from -> mediator -> this
-			SprayWithRouting other = ((WholePRCcast) mediator.getProtocol(WholePRCcast.PID)).swr;
-			other.inview.add(this.node);
-
 		}
 		this.routes.addRoute(from, mediator, to);
 	}
@@ -458,6 +457,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void sendToOutview(MReliableBroadcast m) {
 		for (Node n : this.getOutview()) {
+			System.out.println("@" + this.node.getID() + " SENDTO " + n.getID() + " M " + m.toString());
 			this._send(n, m);
 		}
 	}

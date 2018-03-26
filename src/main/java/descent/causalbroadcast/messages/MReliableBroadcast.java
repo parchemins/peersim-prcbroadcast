@@ -62,7 +62,7 @@ public class MReliableBroadcast implements IMessage {
 
 	@Override
 	public String toString() {
-		return "MReliableBroadcast [origin=" + origin.getID() + ", counter=" + counter + ", sender=" + sender.getID()
+		return "MRB [origin=" + origin.getID() + ", counter=" + counter + ", sender=" + sender.getID()
 				+ "]";
 	}
 
