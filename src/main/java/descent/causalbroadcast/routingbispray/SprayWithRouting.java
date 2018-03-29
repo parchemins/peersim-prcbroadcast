@@ -92,7 +92,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		for (Node neighbor : this.outview.getPeers()) {
 			// no currently used as route && from <- safe -> to
 			if (!this.routes.inUse().contains(neighbor) && !this.prcb.isStillChecking(neighbor)
-					&& this.prcb.isSafe(neighbor)) {
+					&& this.prcb.canSend(neighbor)) {
 				if (age < this.outview.ages.get(neighbor)) {
 					age = this.outview.ages.get(neighbor);
 					possibleOldest = new ArrayList<Node>();
@@ -120,7 +120,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		for (Node neighbor : this.outview.partialView.uniqueSet()) {
 			// same condition in getoldest, we filter candidates
 			if (this.routes.inUse().contains(neighbor) || this.prcb.isStillChecking(neighbor)
-					|| !this.prcb.isSafe(neighbor)) {
+					|| !this.prcb.canSend(neighbor)) {
 				clone.remove(neighbor);
 			}
 		}
@@ -137,10 +137,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 				sample.add(this.node);
 			} else {
 				sample.add(neighbor);
-				WholePRCcast other = (WholePRCcast) neighbor.getProtocol(WholePRCcast.PID);
-				// check
-				assert (this.prcb.isSafe(neighbor));
-				assert (other.prcb.isSafe(this.node));
 			}
 			clone.remove(neighbor, 1);
 		}
@@ -190,7 +186,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public void onSubscription(Node origin) {
 		HashBag<Node> safeNeighbors = new HashBag<Node>();
 		for (Node neighbor : this.outview.partialView) {
-			if (this.prcb.isSafe(neighbor)) {
+			if (this.prcb.canSend(neighbor)) {
 				safeNeighbors.add(neighbor);
 			}
 		}
@@ -236,8 +232,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.prcb.open(new MConnectTo(this.node, null, peer), true);
 		// to -- safe -> from
 		other.prcb.open(new MConnectTo(this.node, null, peer), true);
-		assert (this.prcb.isSafe(peer));
-		assert (other.prcb.isSafe(this.node));
 		return isNew; // (TODO) maybe more meaningful return value
 	}
 
@@ -246,7 +240,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// last part of condition is a cheat to ensure that only one
 		// safety checking run at a time. Without it, the protocol is more
 		// complex to handle concurrent adds.
-		if (isNew && !this.prcb.isStillChecking(m.to) && !this.prcb.isSafe(m.to)) {
+		if (isNew && !this.prcb.isStillChecking(m.to) && !this.prcb.canSend(m.to)) {
 			this.prcb.open(m, false);
 		}
 		return isNew; // (TODO) maybe more meaningful return value
@@ -256,7 +250,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		WholePRCcast other = (WholePRCcast) m.to.getProtocol(WholePRCcast.PID);
 		boolean isNew = this.addNeighbor(m.to);
 		boolean isSafe = false;
-		if (isNew && !this.prcb.isStillChecking(m.to) && !this.prcb.isSafe(m.to)) {
+		if (isNew && !this.prcb.isStillChecking(m.to) && !this.prcb.canSend(m.to)) {
 			// ensure that no concurrent adds are performed
 			// from -- safe -> to
 			this.prcb.open(new MConnectTo(m.from, null, m.to), true);
@@ -429,7 +423,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	 *            The target ultimately.
 	 */
 	private void _send(Node to, Object m) {
-		assert (this.prcb.isSafe(to) || this.routes.inUse().contains(to));
+		assert (this.prcb.canSend(to) || this.routes.inUse().contains(to));
 
 		((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).send(this.node, to, m,
 				WholePRCcast.PID);
@@ -453,7 +447,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void sendToOutview(MReliableBroadcast m) {
 		for (Node n : this.getOutview()) {
-			System.out.println("@" + this.node.getID() + " SENDTO " + n.getID() + " M " + m.toString());
+			System.out.println("@" + this.node.getID() + "       --> " + n.getID() + " " + m.toString());
 			this._send(n, m);
 		}
 	}
@@ -500,7 +494,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public Iterable<Node> getAliveNeighbors() {
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.outview.getPeers())
-			if (n.isUp() && this.prcb.isSafe(n)) // (TODO) inUse included?
+			if (n.isUp() && this.prcb.canSend(n)) // (TODO) inUse included?
 				result.add(n);
 		for (Node n : this.inview)
 			if (n.isUp())

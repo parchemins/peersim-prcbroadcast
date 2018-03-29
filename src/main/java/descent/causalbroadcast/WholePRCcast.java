@@ -64,7 +64,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 			MReliableBroadcast m = (MReliableBroadcast) message;
 			if (this.prcb.canReceive(m.sender)) {
 				System.out.println(
-						"@" + this.prcb.node.getID() + " RECEIVEDFROM " + m.sender.getID() + " " + m.toString());
+						"@" + this.prcb.node.getID() + " <--       " + m.sender.getID() + " " + m.toString());
 				this.prcb.receive(m, m.sender);
 			} else {
 				System.out.println();

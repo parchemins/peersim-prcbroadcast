@@ -8,14 +8,12 @@ public interface IPRCB {
 	public void open(MConnectTo m, boolean bypassSafety);
 
 	public boolean isSafe(Node neighbor);
-
+	
 	public boolean canSend(Node neighbor);
 
 	public boolean canReceive(Node neighbor);
 
 	public boolean isYetToBeSafe(Node neighbor);
-
-	public boolean isNotSafe(Node neighbor);
 
 	public boolean isStillChecking(Node neighbor);
 

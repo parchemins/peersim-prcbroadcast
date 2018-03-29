@@ -1,6 +1,7 @@
 package descent.causalbroadcast;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -41,6 +42,8 @@ public class PRCBcast implements IPRCB {
 	public HashSet<Node> unsafe;
 	public HashSet<Node> safe;
 
+	public HashMap<Node, Integer> vectorClock;
+
 	////////////////////////////////////////////////////////////////////////////
 
 	public PRCBcast() {
@@ -52,6 +55,8 @@ public class PRCBcast implements IPRCB {
 
 		this.unsafe = new HashSet<Node>();
 		this.safe = new HashSet<Node>();
+
+		this.vectorClock = new HashMap<Node, Integer>();
 	}
 
 	// SAFETY:
@@ -179,6 +184,7 @@ public class PRCBcast implements IPRCB {
 			this.receiptsOfPi.put(m.to, true);
 		}
 
+		System.out.println("@" + this.node.getID() + " ====== >" + m.to.getID());
 		this.irs.sendBuffer(m.to, m.from, m.to, this.buffersAlpha.get(m.to));
 
 		if (PRCBcast.TYPE == EArcType.DIRECTIONAL) {
@@ -203,42 +209,51 @@ public class PRCBcast implements IPRCB {
 	 */
 	public void receiveBuffer(Node from, Node to, ArrayList<MReliableBroadcast> bufferBeta) {
 		if (this.node == from) {
-			this.receiveBufferAtFrom(to, bufferBeta);
+			assert (this.safe.contains(to));
+			assert (!this.unsafe.contains(to));
+			assert (this.canSend(to));
+			assert (!this.canReceive(to));
+
 			this.receiveBufferCommon(to, bufferBeta);
+
+			assert (this.canReceive(to));
 		} else {
-			this.receiveBufferAtTo(from, bufferBeta);
+
+			assert (!this.safe.contains(from));
+			assert (this.unsafe.contains(from));
+			assert (!this.canSend(from));
+			assert (!this.canReceive(from));
+
 			this.receiveBufferCommon(from, bufferBeta);
-		}
-	}
 
-	public void receiveBufferAtFrom(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
-		assert (this.safe.contains(origin));
-		assert (!this.unsafe.contains(origin));
-		assert (this.canSend(origin));
-		assert (!this.canReceive(origin));
-	}
+			if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
+				System.out.println("@" + this.node.getID() + " ~~~~~~> " + from.getID());
+				this.irs.sendBuffer(from, from, this.node, this.buffersPi.get(from));
+			}
 
-	public void receiveBufferAtTo(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
-		assert (!this.safe.contains(origin));
-		assert (this.unsafe.contains(origin));
-		assert (!this.canReceive(origin));
-		assert (!this.canSend(origin));
+			this.cleanSafetyChecking(from);
 
-		// last exchange for bidirectional safety
-		if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
-			this.irs.sendBuffer(origin, origin, this.node, this.buffersPi.get(origin));
-			this.unsafe.remove(origin);
-			this.safe.add(origin);
+			this.safe.add(from);
+			this.unsafe.remove(from);
+
+			assert (this.canSend(from));
+			assert (this.canReceive(from));
 		}
 	}
 
 	public void receiveBufferCommon(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
-		assert (this.canSend(origin));
+
+		if (this.node.getID() == 16 || this.node.getID() == 69) {
+			System.out.println("ALPHA " + Arrays.toString(this.buffersAlpha.get(origin).toArray()));
+			System.out.println("BETA " + Arrays.toString(bufferBeta.toArray()));
+			System.out.println("PI " + Arrays.toString(this.buffersPi.get(origin).toArray()));
+		}
 
 		// #1 filter useless messages of buffer
 		bufferBeta.removeAll(this.buffersAlpha.get(origin)); // potential
 		// #2 deliver messages that were not delivered (normal receive procedure
 		// including forward)
+		this.expected.put(origin, new HashSet<MReliableBroadcast>());
 		ArrayList<MReliableBroadcast> toDeliver = new ArrayList<MReliableBroadcast>();
 		for (int i = 0; i < bufferBeta.size(); ++i) {
 			if (!this.buffersPi.get(origin).contains(bufferBeta.get(i))) {
@@ -248,23 +263,15 @@ public class PRCBcast implements IPRCB {
 		// #3 add expected messages to the link
 		HashSet<MReliableBroadcast> toExpect = new HashSet<MReliableBroadcast>(this.buffersPi.get(origin));
 		toExpect.removeAll(bufferBeta);
-		assert (!this.expected.containsKey(origin));
+
 		this.expected.put(origin, toExpect);
 
-		this.cleanSafetyChecking(origin);
 
 		for (MReliableBroadcast m : toDeliver) {
-			if (this.isAlreadyReceived(m)) {
-				for (MReliableBroadcast miaw : toDeliver) {
-					System.out.println(miaw.toString());
-				}
-				System.out.println("@" + this.node.getID() + " ; " + m.toString());
-			}
 			assert (!this.isAlreadyReceived(m));
 			this.receive(m, m.sender);
 		}
 
-		assert (this.canReceive(origin));
 	}
 
 	// DISSEMINATION:
@@ -277,7 +284,8 @@ public class PRCBcast implements IPRCB {
 	 *            The message to broadcast.
 	 */
 	public void cbroadcast(IMessage message) {
-		MReliableBroadcast m = this.rbroadcast(message);
+		// MReliableBroadcast m =
+		this.rbroadcast(message);
 		// this.buffering(m);
 	}
 
@@ -363,6 +371,16 @@ public class PRCBcast implements IPRCB {
 	public void rDeliver(MReliableBroadcast m) {
 		this.buffering(m);
 		this.cDeliver((IMessage) m.getPayload());
+
+		Node origin = m.origin;
+		Integer counter = m.counter;
+		if (!this.vectorClock.containsKey(m.origin)) {
+			assert (counter == 1);
+			this.vectorClock.put(origin, counter);
+		} else {
+			assert (counter == this.vectorClock.get(origin) + 1);
+			this.vectorClock.put(origin, counter);
+		}
 	}
 
 	/**
@@ -427,10 +445,6 @@ public class PRCBcast implements IPRCB {
 		return this.unsafe.contains(neighbor);
 	}
 
-	public boolean isNotSafe(Node neighbor) {
-		return !this.safe.contains(neighbor);
-	}
-
 	/**
 	 * Utility function that checks that at least one of involved processes is
 	 * still performing the safety checking. It goes from sendingAlpha to
@@ -454,4 +468,5 @@ public class PRCBcast implements IPRCB {
 	public boolean canSend(Node neighbor) {
 		return this.safe.contains(neighbor);
 	}
+
 }
