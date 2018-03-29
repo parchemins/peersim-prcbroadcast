@@ -243,7 +243,7 @@ public class PRCBcast implements IPRCB {
 
 	public void receiveBufferCommon(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
 
-		if (this.node.getID() == 16 || this.node.getID() == 69) {
+		if (this.node.getID() == 36 || this.node.getID() == 33) {
 			System.out.println("ALPHA " + Arrays.toString(this.buffersAlpha.get(origin).toArray()));
 			System.out.println("BETA " + Arrays.toString(bufferBeta.toArray()));
 			System.out.println("PI " + Arrays.toString(this.buffersPi.get(origin).toArray()));
@@ -338,13 +338,13 @@ public class PRCBcast implements IPRCB {
 		} else {
 			// #3 if not, we expect to receive the message from all other
 			// neighbors
-			for (Node n : this.safe) {
-				if (this.canReceive(n)) {
+			for (Node n : this.expected.keySet()) {
+				if (this.expected.containsKey(n)) {
 					this.expected.get(n).add(m);
 				}
 			}
 			// null when its the original sender
-			if (from != null && this.canReceive(from)) {
+			if (from != null && this.expected.containsKey(from)) {
 				assert (this.expected.get(from).remove(m));
 			}
 		}

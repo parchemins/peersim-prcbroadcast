@@ -54,7 +54,7 @@ control.o1.endAdd 100*1000
 control.o2 descent.controllers.CSendMessages
 control.o2.FINAL
 control.o2.from 2*CYCLE
-control.o2.step 10000
+control.o2.step 100
 control.o2.messages 1
 
 ################### observers #######################
