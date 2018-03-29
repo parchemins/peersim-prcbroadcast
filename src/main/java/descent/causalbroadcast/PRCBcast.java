@@ -1,7 +1,6 @@
 package descent.causalbroadcast;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -42,6 +41,8 @@ public class PRCBcast implements IPRCB {
 	public HashSet<Node> unsafe;
 	public HashSet<Node> safe;
 
+	// #4 just a consistency checker
+	private static boolean VECTOR_CLOCK_CHECK = true;
 	public HashMap<Node, Integer> vectorClock;
 
 	////////////////////////////////////////////////////////////////////////////
@@ -184,7 +185,8 @@ public class PRCBcast implements IPRCB {
 			this.receiptsOfPi.put(m.to, true);
 		}
 
-		// System.out.println("@" + this.node.getID() + " ====== >" + m.to.getID());
+		// System.out.println("@" + this.node.getID() + " ====== >" +
+		// m.to.getID());
 		this.irs.sendBuffer(m.to, m.from, m.to, this.buffersAlpha.get(m.to));
 
 		if (PRCBcast.TYPE == EArcType.DIRECTIONAL) {
@@ -227,7 +229,8 @@ public class PRCBcast implements IPRCB {
 			this.receiveBufferCommon(from, bufferBeta);
 
 			if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
-				// System.out.println("@" + this.node.getID() + " ~~~~~~> " + from.getID());
+				// System.out.println("@" + this.node.getID() + " ~~~~~~> " +
+				// from.getID());
 				this.irs.sendBuffer(from, from, this.node, this.buffersPi.get(from));
 			}
 
@@ -243,11 +246,14 @@ public class PRCBcast implements IPRCB {
 
 	public void receiveBufferCommon(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
 
-		/* if (this.node.getID() == 36 || this.node.getID() == 33) {
-			System.out.println("ALPHA " + Arrays.toString(this.buffersAlpha.get(origin).toArray()));
-			System.out.println("BETA " + Arrays.toString(bufferBeta.toArray()));
-			System.out.println("PI " + Arrays.toString(this.buffersPi.get(origin).toArray()));
-		}*/
+		/*
+		 * if (this.node.getID() == 36 || this.node.getID() == 33) {
+		 * System.out.println("ALPHA " +
+		 * Arrays.toString(this.buffersAlpha.get(origin).toArray()));
+		 * System.out.println("BETA " + Arrays.toString(bufferBeta.toArray()));
+		 * System.out.println("PI " +
+		 * Arrays.toString(this.buffersPi.get(origin).toArray())); }
+		 */
 
 		// #1 filter useless messages of buffer
 		bufferBeta.removeAll(this.buffersAlpha.get(origin)); // potential
@@ -265,7 +271,6 @@ public class PRCBcast implements IPRCB {
 		toExpect.removeAll(bufferBeta);
 
 		this.expected.put(origin, toExpect);
-
 
 		for (MReliableBroadcast m : toDeliver) {
 			assert (!this.isAlreadyReceived(m));
@@ -372,14 +377,16 @@ public class PRCBcast implements IPRCB {
 		this.buffering(m);
 		this.cDeliver((IMessage) m.getPayload());
 
-		Node origin = m.origin;
-		Integer counter = m.counter;
-		if (!this.vectorClock.containsKey(m.origin)) {
-			assert (counter == 1);
-			this.vectorClock.put(origin, counter);
-		} else {
-			assert (counter == this.vectorClock.get(origin) + 1);
-			this.vectorClock.put(origin, counter);
+		if (PRCBcast.VECTOR_CLOCK_CHECK) {
+			Node origin = m.origin;
+			Integer counter = m.counter;
+			if (!this.vectorClock.containsKey(m.origin)) {
+				assert (counter == 1);
+				this.vectorClock.put(origin, counter);
+			} else {
+				assert (counter == this.vectorClock.get(origin) + 1);
+				this.vectorClock.put(origin, counter);
+			}
 		}
 	}
 
@@ -400,8 +407,9 @@ public class PRCBcast implements IPRCB {
 	private void buffering(MReliableBroadcast m) {
 		for (Node n : this.receiptsOfPi.keySet()) {
 			// if (this.buffersPi.get(n).contains(m)) {
-			//	System.out.println("MIAOU @" + this.node.getID() + " ==== " + m.toString());
-			//}
+			// System.out.println("MIAOU @" + this.node.getID() + " ==== " +
+			// m.toString());
+			// }
 			assert (!this.buffersPi.get(n).contains(m));
 			assert (!this.buffersAlpha.get(n).contains(m));
 
