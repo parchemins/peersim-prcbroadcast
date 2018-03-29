@@ -447,7 +447,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void sendToOutview(MReliableBroadcast m) {
 		for (Node n : this.getOutview()) {
-			System.out.println("@" + this.node.getID() + "       --> " + n.getID() + " " + m.toString());
+			// System.out.println("@" + this.node.getID() + "       --> " + n.getID() + " " + m.toString());
 			this._send(n, m);
 		}
 	}

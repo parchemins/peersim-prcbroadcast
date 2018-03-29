@@ -91,7 +91,7 @@ public class PRCBcast implements IPRCB {
 
 	public void close(Node to) {
 		assert (this.node != to);
-		System.out.println("@" + this.node.getID() + " CLOSE " + to.getID());
+		// System.out.println("@" + this.node.getID() + " CLOSE " + to.getID());
 		assert (this.isSafe(to) || this.isYetToBeSafe(to));
 
 		this.cleanSafetyChecking(to);
@@ -184,7 +184,7 @@ public class PRCBcast implements IPRCB {
 			this.receiptsOfPi.put(m.to, true);
 		}
 
-		System.out.println("@" + this.node.getID() + " ====== >" + m.to.getID());
+		// System.out.println("@" + this.node.getID() + " ====== >" + m.to.getID());
 		this.irs.sendBuffer(m.to, m.from, m.to, this.buffersAlpha.get(m.to));
 
 		if (PRCBcast.TYPE == EArcType.DIRECTIONAL) {
@@ -227,7 +227,7 @@ public class PRCBcast implements IPRCB {
 			this.receiveBufferCommon(from, bufferBeta);
 
 			if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
-				System.out.println("@" + this.node.getID() + " ~~~~~~> " + from.getID());
+				// System.out.println("@" + this.node.getID() + " ~~~~~~> " + from.getID());
 				this.irs.sendBuffer(from, from, this.node, this.buffersPi.get(from));
 			}
 
@@ -243,11 +243,11 @@ public class PRCBcast implements IPRCB {
 
 	public void receiveBufferCommon(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
 
-		if (this.node.getID() == 36 || this.node.getID() == 33) {
+		/* if (this.node.getID() == 36 || this.node.getID() == 33) {
 			System.out.println("ALPHA " + Arrays.toString(this.buffersAlpha.get(origin).toArray()));
 			System.out.println("BETA " + Arrays.toString(bufferBeta.toArray()));
 			System.out.println("PI " + Arrays.toString(this.buffersPi.get(origin).toArray()));
-		}
+		}*/
 
 		// #1 filter useless messages of buffer
 		bufferBeta.removeAll(this.buffersAlpha.get(origin)); // potential
@@ -399,9 +399,9 @@ public class PRCBcast implements IPRCB {
 	 */
 	private void buffering(MReliableBroadcast m) {
 		for (Node n : this.receiptsOfPi.keySet()) {
-			if (this.buffersPi.get(n).contains(m)) {
-				System.out.println("MIAOU @" + this.node.getID() + " ==== " + m.toString());
-			}
+			// if (this.buffersPi.get(n).contains(m)) {
+			//	System.out.println("MIAOU @" + this.node.getID() + " ==== " + m.toString());
+			//}
 			assert (!this.buffersPi.get(n).contains(m));
 			assert (!this.buffersAlpha.get(n).contains(m));
 
