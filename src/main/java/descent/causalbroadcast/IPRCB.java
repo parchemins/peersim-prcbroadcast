@@ -9,6 +9,10 @@ public interface IPRCB {
 
 	public boolean isSafe(Node neighbor);
 
+	public boolean canSend(Node neighbor);
+
+	public boolean canReceive(Node neighbor);
+
 	public boolean isYetToBeSafe(Node neighbor);
 
 	public boolean isNotSafe(Node neighbor);

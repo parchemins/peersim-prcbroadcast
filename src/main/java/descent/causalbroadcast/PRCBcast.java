@@ -68,6 +68,9 @@ public class PRCBcast implements IPRCB {
 		assert (!this.isStillChecking(other));
 		assert (!this.safe.contains(other));
 		assert (!this.unsafe.contains(other));
+		assert (!this.canReceive(other));
+		assert (!this.canSend(other));
+
 		if (bypassSafety) {
 			assert (m.mediator == null);
 			// #A peer-sampling knows the neighbor is safe by design
@@ -85,9 +88,13 @@ public class PRCBcast implements IPRCB {
 		assert (this.node != to);
 		System.out.println("@" + this.node.getID() + " CLOSE " + to.getID());
 		assert (this.isSafe(to) || this.isYetToBeSafe(to));
+
 		this.cleanSafetyChecking(to);
 		this.expected.remove(to);
 		this.safe.remove(to);
+
+		assert (!this.canSend(to));
+		assert (!this.canReceive(to));
 	}
 
 	/**
@@ -99,7 +106,10 @@ public class PRCBcast implements IPRCB {
 	 *            to = this.node
 	 */
 	public void receiveAlpha(MAlpha m) {
-		assert (!this.safe.contains(m.from) && !this.unsafe.contains(m.from));
+		assert (!this.safe.contains(m.from));
+		assert (!this.unsafe.contains(m.from));
+		assert (!this.canReceive(m.from));
+		assert (!this.canSend(m.from));
 
 		this.unsafe.add(m.from);
 
@@ -119,7 +129,10 @@ public class PRCBcast implements IPRCB {
 	 *            The node we add in our out-view.
 	 */
 	public void receiveBeta(MBeta m) {
-		assert (!this.safe.contains(m.to) && this.unsafe.contains(m.to));
+		assert (!this.safe.contains(m.to));
+		assert (this.unsafe.contains(m.to));
+		assert (!this.canReceive(m.to));
+		assert (!this.canSend(m.to));
 
 		this.buffersAlpha.put(m.to, new ArrayList<MReliableBroadcast>());
 		this.buffersPi.put(m.to, new ArrayList<MReliableBroadcast>());
@@ -136,7 +149,10 @@ public class PRCBcast implements IPRCB {
 	 *            to = this.node
 	 */
 	public void receivePi(MPi m) {
-		assert (!this.safe.contains(m.from) && this.unsafe.contains(m.from));
+		assert (!this.safe.contains(m.from));
+		assert (this.unsafe.contains(m.from));
+		assert (!this.canReceive(m.from));
+		assert (!this.canSend(m.from));
 
 		this.receiptsOfPi.put(m.from, true);
 		this.irs.sendRho(m);
@@ -151,19 +167,26 @@ public class PRCBcast implements IPRCB {
 	 *            The node that we add as neighbor.
 	 */
 	public void receiveRho(MRho m) {
-		assert (!this.safe.contains(m.to) && this.unsafe.contains(m.to));
+		assert (!this.safe.contains(m.to));
+		assert (this.unsafe.contains(m.to));
+		assert (!this.canReceive(m.to));
+		assert (!this.canSend(m.to));
 
+		this.unsafe.remove(m.to);
+		this.safe.add(m.to); // (here in case latency is 0)
+		// safe "from"->"to", not safe on receipt : no clean yet
 		if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
-			// #A continue protocol
 			this.receiptsOfPi.put(m.to, true);
-			this.irs.sendBuffer(m.to, m.from, m.to, this.buffersAlpha.get(m.to));
-			// safe "from"->"to", not safe on receipt : no clean yet
-			this.unsafe.remove(m.to);
-			this.safe.add(m.to);
-		} else {
+		}
+
+		this.irs.sendBuffer(m.to, m.from, m.to, this.buffersAlpha.get(m.to));
+
+		if (PRCBcast.TYPE == EArcType.DIRECTIONAL) {
 			// #B it 's enough for directional
 			this.cleanSafetyChecking(m.to);
 		}
+
+		assert (this.canSend(m.to));
 	}
 
 	/**
@@ -191,10 +214,16 @@ public class PRCBcast implements IPRCB {
 	public void receiveBufferAtFrom(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
 		assert (this.safe.contains(origin));
 		assert (!this.unsafe.contains(origin));
+		assert (this.canSend(origin));
+		assert (!this.canReceive(origin));
 	}
 
 	public void receiveBufferAtTo(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
-		assert (!this.safe.contains(origin) && this.unsafe.contains(origin));
+		assert (!this.safe.contains(origin));
+		assert (this.unsafe.contains(origin));
+		assert (!this.canReceive(origin));
+		assert (!this.canSend(origin));
+
 		// last exchange for bidirectional safety
 		if (PRCBcast.TYPE == EArcType.BIDIRECTIONAL) {
 			this.irs.sendBuffer(origin, origin, this.node, this.buffersPi.get(origin));
@@ -204,6 +233,8 @@ public class PRCBcast implements IPRCB {
 	}
 
 	public void receiveBufferCommon(Node origin, ArrayList<MReliableBroadcast> bufferBeta) {
+		assert (this.canSend(origin));
+
 		// #1 filter useless messages of buffer
 		bufferBeta.removeAll(this.buffersAlpha.get(origin)); // potential
 		// #2 deliver messages that were not delivered (normal receive procedure
@@ -232,6 +263,8 @@ public class PRCBcast implements IPRCB {
 			assert (!this.isAlreadyReceived(m));
 			this.receive(m, m.sender);
 		}
+
+		assert (this.canReceive(origin));
 	}
 
 	// DISSEMINATION:
@@ -245,7 +278,7 @@ public class PRCBcast implements IPRCB {
 	 */
 	public void cbroadcast(IMessage message) {
 		MReliableBroadcast m = this.rbroadcast(message);
-		this.buffering(m);
+		// this.buffering(m);
 	}
 
 	/**
@@ -271,7 +304,7 @@ public class PRCBcast implements IPRCB {
 	 *            From whom we just received the message.
 	 */
 	public void receive(MReliableBroadcast m, Node from) {
-		if (!received(m, from)) {
+		if (!this.received(m, from)) {
 			this.irs.sendToOutview(m.copy(this.node));
 			this.rDeliver(m);
 		}
@@ -294,31 +327,21 @@ public class PRCBcast implements IPRCB {
 		// #2 if it has, we purge the specific entry
 		if (hasReceived) {
 			assert (this.expected.get(from).remove(m)); // no double receipts
-			// if (this.expected.get(from).isEmpty()) {
-			// this.expected.remove(from);
-			// }
 		} else {
 			// #3 if not, we expect to receive the message from all other
 			// neighbors
 			for (Node n : this.safe) {
-				// still processing "to Expect"
-				if (!this.buffersAlpha.containsKey(n)) {
-					// if (!this.expected.containsKey(n)) {
-					// this.expected.put(n, new HashSet<MReliableBroadcast>());
-					// }
+				if (this.canReceive(n)) {
 					this.expected.get(n).add(m);
 				}
 			}
-			if (from != null) { // null when its the original sender
-				if (this.isSafe(from) && !this.buffersAlpha.containsKey(from)) {
-					// System.out
-					// .println("@" + this.node.getID() + " IS SAFE " +
-					// from.getID() + " : " + this.isSafe(from));
-					assert (this.expected.get(from).remove(m));
-				}
+			// null when its the original sender
+			if (from != null && this.canReceive(from)) {
+				assert (this.expected.get(from).remove(m));
 			}
 		}
 		return hasReceived;
+
 	}
 
 	private boolean isAlreadyReceived(MReliableBroadcast m) {
@@ -358,6 +381,9 @@ public class PRCBcast implements IPRCB {
 	 */
 	private void buffering(MReliableBroadcast m) {
 		for (Node n : this.receiptsOfPi.keySet()) {
+			if (this.buffersPi.get(n).contains(m)) {
+				System.out.println("MIAOU @" + this.node.getID() + " ==== " + m.toString());
+			}
 			assert (!this.buffersPi.get(n).contains(m));
 			assert (!this.buffersAlpha.get(n).contains(m));
 
@@ -420,7 +446,8 @@ public class PRCBcast implements IPRCB {
 	}
 
 	public boolean canReceive(Node neighbor) {
-		assert (this.expected.containsKey(neighbor) && !this.unsafe.contains(neighbor) && this.safe.contains(neighbor));
+		assert (!this.expected.containsKey(neighbor) || (this.expected.containsKey(neighbor)
+				&& !this.unsafe.contains(neighbor) && this.safe.contains(neighbor)));
 		return this.expected.containsKey(neighbor);
 	}
 

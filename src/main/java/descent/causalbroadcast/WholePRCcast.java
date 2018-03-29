@@ -62,13 +62,14 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		if (message instanceof MReliableBroadcast) {
 			// must check because message sent still travel
 			MReliableBroadcast m = (MReliableBroadcast) message;
-			if (this.prcb.isSafe(m.sender)) {
+			if (this.prcb.canReceive(m.sender)) {
 				System.out.println(
 						"@" + this.prcb.node.getID() + " RECEIVEDFROM " + m.sender.getID() + " " + m.toString());
 				this.prcb.receive(m, m.sender);
 			} else {
 				System.out.println();
-				System.out.println("TO DOUBLE CHECK @" + this.prcb.node.getID() + " FROM " + m.sender.getID());
+				System.out.println("TO DOUBLE CHECK @" + this.prcb.node.getID() + " FROM " + m.sender.getID()
+						+ " MESSAGE " + m.toString());
 			}
 
 		} else if (message instanceof MExchangeWith) {
@@ -100,7 +101,7 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 					MRho m = (MRho) message;
 					this.prcb.receiveRho(m);
 				} else if (message instanceof MBuffer) {
-					System.out.println("@"+this.prcb.node.getID() + " RCV BUFF " + imcm.getSender().getID());
+					System.out.println("@" + this.prcb.node.getID() + " RCV BUFF " + imcm.getSender().getID());
 					this.prcb.receiveBuffer(imcm.getFrom(), imcm.getTo(), ((MBuffer) message).messages);
 				}
 

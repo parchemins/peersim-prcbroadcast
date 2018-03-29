@@ -7,7 +7,6 @@ import java.util.List;
 import org.apache.commons.collections4.bag.HashBag;
 
 import descent.causalbroadcast.IPRCB;
-import descent.causalbroadcast.PRCBcast;
 import descent.causalbroadcast.WholePRCcast;
 import descent.causalbroadcast.messages.IMControlMessage;
 import descent.causalbroadcast.messages.MAlpha;
@@ -419,9 +418,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			sender = temp;
 		}
 
-		// #1 check if there is an issue with algo
-		assert (!this.prcb.isSafe(receiver)); // was safe already
-
 		// #2 send the buffer
 		this._sendUnsafe(receiver, new MBuffer(from, to, sender, receiver, buffer));
 	}
@@ -474,14 +470,15 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// since bidirectionnal, outview includes inview
 		HashSet<Node> result = new HashSet<Node>();
 		for (Node n : this.outview.getPeers()) {
-			if (this.prcb.isSafe(n))
+			if (this.prcb.canSend(n))
 				result.add(n);
 		}
 		for (Node n : this.inview) {
-			if (this.prcb.isSafe(n))
+			if (this.prcb.canSend(n))
 				result.add(n);
 		}
 		for (Node n : this.routes.inUse()) {
+			assert (this.prcb.canSend(n));
 			result.add(n);
 		}
 		return result;
