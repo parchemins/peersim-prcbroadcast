@@ -42,7 +42,7 @@ public class PRCBcast implements IPRCB {
 	public HashSet<Node> safe;
 
 	// #4 just a consistency checker
-	private static boolean VECTOR_CLOCK_CHECK = true;
+	public static boolean VECTOR_CLOCK_CHECK = true;
 	public HashMap<Node, Integer> vectorClock;
 
 	////////////////////////////////////////////////////////////////////////////
@@ -218,6 +218,8 @@ public class PRCBcast implements IPRCB {
 
 			this.receiveBufferCommon(to, bufferBeta);
 
+			this.cleanSafetyChecking(to);
+			
 			assert (this.canReceive(to));
 		} else {
 

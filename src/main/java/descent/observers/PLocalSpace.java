@@ -20,40 +20,37 @@ public class PLocalSpace implements IObserverProgram {
 	}
 
 	public void tick(long currentTick, DictGraph observer) {
-		ArrayList<Double> outview = new ArrayList<Double>();
-		ArrayList<Double> inview = new ArrayList<Double>();
-
-		ArrayList<Double> unsafe = new ArrayList<Double>();
-		ArrayList<Double> safe = new ArrayList<Double>();
-
-		ArrayList<Double> routes = new ArrayList<Double>();
+		ArrayList<Double> expectedMessages = new ArrayList<Double>();
+		ArrayList<Double> buffersMessages = new ArrayList<Double>();
+		ArrayList<Double> sizeVector = new ArrayList<Double>();
 
 		for (Node n : CDynamicNetwork.networks.get(0)) {
 			PRCBcast prcb = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).prcb;
-			SprayWithRouting swr = ((WholePRCcast) n.getProtocol(WholePRCcast.PID)).swr;
 
-			outview.add((double) swr.outview.partialView.size());
-			inview.add((double) swr.inview.size());
+			Integer sumExpectedMessages = 0;
+			for (Node m : prcb.expected.keySet()) {
+				sumExpectedMessages += prcb.expected.get(m).size();
+			}
 
-			unsafe.add((double) prcb.unsafe.size());
-			safe.add((double) prcb.safe.size());
+			Integer sumBuffersMessages = 0;
+			for (Node m : prcb.buffersAlpha.keySet()) {
+				sumBuffersMessages += prcb.buffersAlpha.get(m).size();
+				sumBuffersMessages += prcb.buffersPi.get(m).size();
+			}
 
-			routes.add((double) swr.routes.inUse().size());
+			if (PRCBcast.VECTOR_CLOCK_CHECK) {
+				sizeVector.add((double) prcb.vectorClock.size());
+			}
+
+			expectedMessages.add((double) sumExpectedMessages);
+			buffersMessages.add((double) sumBuffersMessages);
 		}
 
-		Node theOne = CDynamicNetwork.networks.get(0).get(0);
+		Stats sExpectedMessages = Stats.getFromSmall(expectedMessages);
+		Stats sBuffersMessages = Stats.getFromSmall(buffersMessages);
+		Stats sVectorClock = Stats.getFromSmall(sizeVector);
 
-		Long latency = ((Transport) theOne.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).getLatency(null,
-				null);
-
-		Stats sOutview = Stats.getFromSmall(outview);
-		Stats sInview = Stats.getFromSmall(inview);
-
-		Stats sUnsafe = Stats.getFromSmall(unsafe);
-		Stats sRoutes = Stats.getFromSmall(routes);
-		Stats sSafe = Stats.getFromSmall(safe);
-		System.out.println("PLS. " + latency + " (" + sOutview.mean + "; " + sInview.mean + ") (" + sUnsafe.mean + "  "
-				+ sSafe.mean + ")  " + sRoutes.mean);
+		System.out.println("PLS. " + sExpectedMessages.mean + " " + sBuffersMessages.mean + " " + sVectorClock.mean);
 	}
 
 	public void onLastTick(DictGraph observer) {

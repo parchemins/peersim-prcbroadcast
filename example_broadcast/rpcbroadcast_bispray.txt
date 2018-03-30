@@ -1,5 +1,5 @@
 # network size
-SIZE 100
+SIZE 1000
 
 # parameters of periodic execution
 CYCLES 60
@@ -64,18 +64,26 @@ control.0.protocol prc
 control.0.FINAL
 control.0.step CYCLE
 
+
 control.1 descent.observers.structure.Observer
-control.1.program descent.observers.PLocalSpace
+control.1.program descent.observers.PPeerSampling
 control.1.protocol prc
 control.1.FINAL
 control.1.step CYCLE/60
 control.1.from 100
 
-
 control.2 descent.observers.structure.Observer
-control.2.program descent.observers.PMessages
+control.2.program descent.observers.PLocalSpace
 control.2.protocol prc
 control.2.FINAL
 control.2.step CYCLE/60
 control.2.from 100
+
+
+control.3 descent.observers.structure.Observer
+control.3.program descent.observers.PMessages
+control.3.protocol prc
+control.3.FINAL
+control.3.step CYCLE/60
+control.3.from 100
 
