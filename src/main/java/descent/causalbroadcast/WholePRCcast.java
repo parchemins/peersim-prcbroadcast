@@ -62,14 +62,9 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 		if (message instanceof MReliableBroadcast) {
 			// must check because message sent still travel
 			MReliableBroadcast m = (MReliableBroadcast) message;
+			// (TODO) check .isUp if leaving peers
 			if (this.prcb.canReceive(m.sender)) {
-				//System.out.println(
-				//		"@" + this.prcb.node.getID() + " <--       " + m.sender.getID() + " " + m.toString());
 				this.prcb.receive(m, m.sender);
-			} else {
-				// System.out.println();
-				// System.out.println("TO DOUBLE CHECK @" + this.prcb.node.getID() + " FROM " + m.sender.getID()
-				//		+ " MESSAGE " + m.toString());
 			}
 
 		} else if (message instanceof MExchangeWith) {
@@ -101,15 +96,12 @@ public class WholePRCcast implements IComposition, EDProtocol, CDProtocol {
 					MRho m = (MRho) message;
 					this.prcb.receiveRho(m);
 				} else if (message instanceof MBuffer) {
-					// System.out.println("@" + this.prcb.node.getID() + " RCV BUFF " + imcm.getSender().getID());
 					this.prcb.receiveBuffer(imcm.getFrom(), imcm.getTo(), ((MBuffer) message).messages);
 				}
 
 			} else {
 				// mediator forwards
 				IMControlMessage m = (IMControlMessage) message;
-				// refreshing route is not necessary
-				// this.swr.addRoute(m.getFrom(), this.prcb.node, m.getTo());
 				this.swr._sendControlMessage(m.getReceiver(), m);
 			}
 

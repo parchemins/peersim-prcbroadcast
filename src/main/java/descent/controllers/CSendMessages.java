@@ -22,8 +22,6 @@ public class CSendMessages implements Control {
 		for (int i = 0; i < CSendMessages.MESSAGES; ++i) {
 			Integer index = CSendMessages.erng.nextInt(CDynamicNetwork.networks.get(0).size());
 			WholePRCcast wprc = (WholePRCcast) CDynamicNetwork.networks.get(0).get(index).getProtocol(WholePRCcast.PID);
-			// System.out.println();
-			//System.out.println("@"+wprc.swr.node.getID() + " INIT BROADCAST.");
 			wprc.prcb.cbroadcast(null);
 		}
 

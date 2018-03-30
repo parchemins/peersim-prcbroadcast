@@ -58,9 +58,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		// #1 select a neighbor to exchange with
 		Node q = this._getOldest();
 		if (q != null) {
-
-			// System.out.println("PERIODIC @" + this.node.getID() + "; " +
-			// q.getID());
 			// #2 prepare a sample
 			HashBag<Node> sample = this._getSample(q);
 
@@ -70,8 +67,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 			Integer qCounter = 0;
 			for (Node neighbor : sample) {
 				if (neighbor != this.node) {
-					// System.out.println("from " + q.getID() + " -> " +
-					// neighbor.getID());
 					this.sendMConnectTo(q, neighbor);
 					this.removeNeighbor(neighbor);
 				} else {
@@ -147,8 +142,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	public IMessage onPeriodicCall(Node origin, IMessage message) {
 		MExchangeWith m = (MExchangeWith) message;
 
-		// System.out.println("ON PERIODIC @" + this.node.getID() + ";; " +
-		// origin.getID() + " x" + m.nbReferences);
 		SprayWithRouting other = ((WholePRCcast) origin.getProtocol(WholePRCcast.PID)).swr;
 
 		for (int i = 0; i < m.nbReferences; ++i)
@@ -217,8 +210,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 		// #2 add in both directions
 		this.outview.addNeighbor(peer);
-		// System.out.println("@" +other.node.getID() + " ADD INVIEW " +
-		// this.node.getID());
 		other.inview.add(this.node);
 
 		return !alreadyContained;
@@ -275,9 +266,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		this.outview.removeNeighbor(peer);
 		if (!this.outview.contains(peer) && !this.routes.inUse().contains(peer)) {
 			// (TODO) this code is similar as the one in remove route, factorize
-
-			// System.out.println("@"+other.node.getID()+ " REMOVE FROM INVIEW "
-			// + this.node.getID());
 			other.inview.remove(this.node);
 			if (!this.inview.contains(peer)) {
 				assert (!other.outview.contains(this.node));
@@ -297,8 +285,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		assert (other.inview.contains(this.node) || other.outview.contains(this.node));
 
 		if (!this.outview.contains(peer) && !this.routes.inUse().contains(peer)) {
-			// System.out.println("@"+other.node.getID()+ " REMOVE FROM INVIEW "
-			// + this.node.getID());
 			other.inview.remove(this.node);
 			if (!this.inview.contains(peer)) {
 				assert (!other.outview.contains(this.node));
@@ -447,7 +433,6 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 
 	public void sendToOutview(MReliableBroadcast m) {
 		for (Node n : this.getOutview()) {
-			// System.out.println("@" + this.node.getID() + "       --> " + n.getID() + " " + m.toString());
 			this._send(n, m);
 		}
 	}
@@ -481,12 +466,12 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 	// PEER-SAMPLING BASICS:
 
 	public Iterable<Node> getPeers(int k) {
-		// (TODO) inview ?
+		// (TODO)
 		return this.outview.getPeers(k);
 	}
 
 	public Iterable<Node> getPeers() {
-		// (TODO) inview ?
+		// (TODO)
 		return this.outview.getPeers();
 	}
 
@@ -513,7 +498,7 @@ public class SprayWithRouting extends APeerSampling implements IRoutingService {
 		return false;
 	}
 
-	////// FOR PEERSIM OBSERVER
+	////// FOR PEERSIM OBSERVER(S)
 
 	public Integer getNumberOfControlMessagesSentSinceLastCheck() {
 		Integer result = this.numberOfControlMessagesSentSinceLastCheck;
