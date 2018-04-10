@@ -2,6 +2,7 @@ package descent.observers.properties;
 
 import descent.observers.structure.DictGraph;
 import descent.observers.structure.IObserverProgram;
+import peersim.core.CommonState;
 
 /**
  * Created by julian on 4/29/15.
@@ -26,8 +27,8 @@ public class PVarianceAndArcCount implements IObserverProgram {
 			lastCountTemp = observer.countArcs();
 		}
 
-		System.out.println(observer.size() + " " + observer.countArcs() + " " + observer.countArcsNoDuplicates() + " "
-				+ observer.getViewSizeStats().toString() + " ");
+		System.out.println("PIO. " + CommonState.getTime() + " " + observer.size() + " " + observer.countArcs() + " "
+				+ observer.countArcsNoDuplicates() + " " + observer.getViewSizeStats().toString() + " ");
 		// + " " + firstVar + " " + lastCount);
 
 	}

@@ -10,6 +10,7 @@ import descent.observers.structure.DictGraph;
 import descent.observers.structure.IObserverProgram;
 import descent.observers.structure.Stats;
 import peersim.config.FastConfig;
+import peersim.core.CommonState;
 import peersim.core.Node;
 import peersim.transport.Transport;
 
@@ -50,7 +51,8 @@ public class PLocalSpace implements IObserverProgram {
 		Stats sBuffersMessages = Stats.getFromSmall(buffersMessages);
 		Stats sVectorClock = Stats.getFromSmall(sizeVector);
 
-		System.out.println("PLS. " + sExpectedMessages.mean + " " + sBuffersMessages.mean + " " + sVectorClock.mean);
+		System.out.println("PLS. " + CommonState.getTime() + " " + sExpectedMessages.mean + " " + sBuffersMessages.mean
+				+ " " + sVectorClock.mean);
 	}
 
 	public void onLastTick(DictGraph observer) {

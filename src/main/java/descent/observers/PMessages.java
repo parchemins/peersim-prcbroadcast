@@ -7,6 +7,7 @@ import descent.controllers.CDynamicNetwork;
 import descent.observers.structure.DictGraph;
 import descent.observers.structure.IObserverProgram;
 import descent.observers.structure.Stats;
+import peersim.core.CommonState;
 import peersim.core.Node;
 
 public class PMessages implements IObserverProgram {
@@ -26,7 +27,7 @@ public class PMessages implements IObserverProgram {
 
 		Stats sControlMessages = Stats.getFromSmall(controlMessages);
 
-		System.out.println("PM.  " + sControlMessages.toString());
+		System.out.println("PM.  " + CommonState.getTime() + " " + sControlMessages.toString());
 
 	}
 

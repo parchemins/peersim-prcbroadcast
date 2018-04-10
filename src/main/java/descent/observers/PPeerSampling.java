@@ -10,6 +10,7 @@ import descent.observers.structure.DictGraph;
 import descent.observers.structure.IObserverProgram;
 import descent.observers.structure.Stats;
 import peersim.config.FastConfig;
+import peersim.core.CommonState;
 import peersim.core.Node;
 import peersim.transport.Transport;
 
@@ -52,8 +53,8 @@ public class PPeerSampling implements IObserverProgram {
 		Stats sUnsafe = Stats.getFromSmall(unsafe);
 		Stats sRoutes = Stats.getFromSmall(routes);
 		Stats sSafe = Stats.getFromSmall(safe);
-		System.out.println("PPS. " + latency + " (" + sOutview.mean + "; " + sInview.mean + ") (" + sUnsafe.mean + "  "
-				+ sSafe.mean + ")  " + sRoutes.mean);
+		System.out.println("PPS. " + CommonState.getTime() + " " + latency + " (" + sOutview.mean + "; " + sInview.mean
+				+ ") (" + sUnsafe.mean + "  " + sSafe.mean + ")  " + sRoutes.mean);
 	}
 
 	public void onLastTick(DictGraph observer) {

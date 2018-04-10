@@ -42,7 +42,7 @@ public class PRCBcast implements IPRCB {
 	public HashSet<Node> safe;
 
 	// #4 just a consistency checker
-	public static boolean VECTOR_CLOCK_CHECK = true;
+	public static boolean VECTOR_CLOCK_CHECK = false;
 	public HashMap<Node, Integer> vectorClock;
 
 	////////////////////////////////////////////////////////////////////////////

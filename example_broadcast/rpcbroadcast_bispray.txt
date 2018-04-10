@@ -1,5 +1,5 @@
 # network size
-SIZE 1000
+SIZE 100
 
 # parameters of periodic execution
 CYCLES 60
@@ -27,7 +27,7 @@ protocol.urt.min 1
 protocol.urt.inc 10
 protocol.urt.from 15*CYCLE
 protocol.urt.stop 40*CYCLE
-protocol.urt.step CYCLE/20
+protocol.urt.step CYCLE/10
 
 protocol.prc descent.causalbroadcast.WholePRCcast
 protocol.prc.pid prc
@@ -54,6 +54,7 @@ control.o1.endAdd 100*1000
 control.o2 descent.controllers.CSendMessages
 control.o2.FINAL
 control.o2.from 2*CYCLE
+control.o2.stop 50*CYCLE
 control.o2.step 100
 control.o2.messages 1
 
