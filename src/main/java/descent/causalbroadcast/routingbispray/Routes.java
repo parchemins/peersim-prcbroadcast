@@ -7,6 +7,8 @@ import java.util.Set;
 
 import descent.causalbroadcast.PRCBcast;
 import descent.causalbroadcast.WholePRCcast;
+import descent.transport.FIFO;
+import descent.transport.IncreasingLatencyTransport;
 import peersim.config.FastConfig;
 import peersim.core.CommonState;
 import peersim.core.Node;
@@ -89,15 +91,16 @@ public class Routes {
 
 	public void upKeep() {
 		// Integer retainingTime = this.retainingTime;
-		Integer retainingTime = 
-				((int) (((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID)))
-						.getLatency(null, null)) * this.multiplicativeFactorForRetainingRoute);
+		Integer retainingTime = ((IncreasingLatencyTransport) this.node
+				.getProtocol(FastConfig.getTransport(WholePRCcast.PID))).INC
+				+ ((int) (((Transport) this.node.getProtocol(FastConfig.getTransport(WholePRCcast.PID)))
+						.getLatency(null, null)) * (this.multiplicativeFactorForRetainingRoute));
 
 		for (Node n : new HashSet<Node>(this.routes.keySet())) {
 			for (Route r : new ArrayList<Route>(this.routes.get(n))) {
 				if (r.timestamp < CommonState.getIntTime() - retainingTime) {
 					this.routes.get(n).remove(r);
-					SprayWithRouting parent = ((WholePRCcast)this.node.getProtocol(WholePRCcast.PID)).swr;
+					SprayWithRouting parent = ((WholePRCcast) this.node.getProtocol(WholePRCcast.PID)).swr;
 					parent.removedRoute(r);
 				}
 			}

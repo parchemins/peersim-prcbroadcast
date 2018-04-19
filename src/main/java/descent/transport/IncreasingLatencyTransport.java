@@ -12,7 +12,7 @@ public class IncreasingLatencyTransport implements Transport {
 	private static Integer MIN;
 
 	private static final String PAR_INC = "inc";
-	private static Integer INC;
+	public static Integer INC;
 
 	private static final String PAR_FROM = "from";
 	private static long FROM;
