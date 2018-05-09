@@ -1,16 +1,15 @@
-# peersim-pcbroadcast
+# peersim-prcbroadcast
 
-_Keywords: causal broadcast, large and dynamic networks_
+_Keywords: causal broadcast, reliable broadcast, space complexity, large and
+dynamic systems_
 
 [PeerSim](http://peersim.sourceforge.net/) [1] implementation for preventive
-causal broadcast. Instead of checking at each receipt if messages are ready to
-be delivered, messages arrive ready by design. Instead of conveying control
-information that increases linearly with the network size, messages convey
-constant size control information. The delivery execution time goes from linear
-to constant too.
-
-Causal broadcast finally becomes an affordable and efficient middleware for
-distributed protocols and applications in large and dynamic systems.
+reliable causal broadcast. It exploits causal order to improve the underlying
+reliable broadcast. Its space complexity becomes non-monotonic and depends on
+the system and its current usage. In dynamic systems where processes join,
+leave, or self reconfigure at any time, this comes at the cost of lightweight
+control messages. Fortunately, the number of control messages stays small when
+the peer-sampling protocol allows a form of routing.
 
 
 ## References
